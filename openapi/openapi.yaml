@@ -1,0 +1,388 @@
+openapi: 3.1.0
+info:
+  title: GameHub API
+  version: 1.0.0
+  description: >
+    Per-user TikFinity gift hooks, game bindings, settings, and live SSE.
+    Session cookie (Auth.js / Google) protects authenticated routes.
+    Hook ingest is authenticated by the path token only.
+servers:
+  - url: http://localhost:3000
+    description: Local workshop
+paths:
+  /api/v1/hooks/{token}/events:
+    post:
+      operationId: ingestHookEvent
+      summary: Ingest a TikFinity gift event for the user who owns this token
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TikFinityGiftBody"
+      responses:
+        "202":
+          description: Accepted (action published) or ignored with reason
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/HookAccepted"
+                  - $ref: "#/components/schemas/HookIgnored"
+        "401":
+          description: Unknown hook token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: Invalid body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/hooks/me:
+    get:
+      operationId: getMyHook
+      summary: Return the current user's hook URL and token
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Hook details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HookInfo"
+        "401":
+          description: Not signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      operationId: rotateMyHook
+      summary: Rotate the hook token (invalidates the previous URL)
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: New hook details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HookInfo"
+        "401":
+          description: Not signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/games/{slug}/bindings:
+    get:
+      operationId: getBindings
+      summary: Gift name to action map for a game
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/slug"
+      responses:
+        "200":
+          description: Bindings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BindingsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: putBindings
+      summary: Replace gift bindings for a game
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/slug"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BindingsBody"
+      responses:
+        "200":
+          description: Saved bindings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BindingsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+
+  /api/v1/games/{slug}/settings:
+    get:
+      operationId: getSettings
+      summary: Game settings for the signed-in user
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/slug"
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettingsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: putSettings
+      summary: Replace game settings
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/slug"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GameSettings"
+      responses:
+        "200":
+          description: Saved settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettingsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+
+  /api/v1/games/{slug}/live:
+    get:
+      operationId: liveStream
+      summary: Server-sent events stream of gift actions for the signed-in user
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/slug"
+      responses:
+        "200":
+          description: SSE stream (text/event-stream)
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/games/{slug}/test:
+    post:
+      operationId: testGift
+      summary: Publish a gift action onto the live stream without TikFinity
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/slug"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [giftName]
+              properties:
+                giftName:
+                  type: string
+                repeatCount:
+                  type: integer
+                  minimum: 1
+                  maximum: 10
+                  default: 1
+      responses:
+        "202":
+          description: Published or ignored
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/HookAccepted"
+                  - $ref: "#/components/schemas/HookIgnored"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: authjs.session-token
+  parameters:
+    slug:
+      name: slug
+      in: path
+      required: true
+      schema:
+        type: string
+        example: dont-touch-the-water
+  responses:
+    Unauthorized:
+      description: Not signed in
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Unknown game slug
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unprocessable:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+    TikFinityGiftBody:
+      type: object
+      properties:
+        event:
+          type: string
+          description: Optional TikFinity envelope event name (gift)
+        data:
+          $ref: "#/components/schemas/GiftData"
+        giftName:
+          type: string
+        repeatCount:
+          type: integer
+        giftType:
+          type: integer
+        repeatEnd:
+          type: boolean
+        coins:
+          type: integer
+    GiftData:
+      type: object
+      properties:
+        giftName:
+          type: string
+        repeatCount:
+          type: integer
+        giftType:
+          type: integer
+        repeatEnd:
+          type: boolean
+        coins:
+          type: integer
+        giftId:
+          type: string
+    HookAccepted:
+      type: object
+      required: [giftName, action, repeatCount]
+      properties:
+        giftName:
+          type: string
+        action:
+          type: string
+        repeatCount:
+          type: integer
+    HookIgnored:
+      type: object
+      required: [ignored, reason]
+      properties:
+        ignored:
+          type: boolean
+          const: true
+        reason:
+          type: string
+          enum: [streak, unmapped, duplicate]
+    HookInfo:
+      type: object
+      required: [token, url]
+      properties:
+        token:
+          type: string
+        url:
+          type: string
+          format: uri
+    BindingsBody:
+      type: object
+      required: [bindings]
+      properties:
+        bindings:
+          type: object
+          additionalProperties:
+            type: string
+    BindingsResponse:
+      type: object
+      required: [slug, bindings]
+      properties:
+        slug:
+          type: string
+        bindings:
+          type: object
+          additionalProperties:
+            type: string
+    GameSettings:
+      type: object
+      required: [monster, diff, fov, push, custom]
+      properties:
+        monster:
+          type: string
+          enum: [stalker, crawler, beast, shadow]
+        diff:
+          type: integer
+          minimum: 0
+          maximum: 3
+        fov:
+          type: number
+          minimum: 60
+          maximum: 120
+        push:
+          type: number
+          minimum: 6
+          maximum: 24
+        custom:
+          type: integer
+    SettingsResponse:
+      type: object
+      required: [slug, settings]
+      properties:
+        slug:
+          type: string
+        settings:
+          $ref: "#/components/schemas/GameSettings"
