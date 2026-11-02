@@ -5,8 +5,10 @@ import type { GameMeta } from "@/games/registry";
 import {
   ACTIONS,
   GIFT_CATALOG,
+  formatGiftCoins,
   giftEmoji,
   type GameSettings,
+  type GiftEntry,
 } from "@/lib/gifts";
 
 type Props = {
@@ -30,6 +32,7 @@ export function GameDashboard({
   const [hook, setHook] = useState(initialHook);
   const [log, setLog] = useState<LogLine[]>([]);
   const [modal, setModal] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [selGift, setSelGift] = useState<string | null>(null);
   const [selAction, setSelAction] = useState("push_back");
@@ -125,14 +128,54 @@ export function GameDashboard({
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const list = GIFT_CATALOG.filter((g) =>
+    let list: GiftEntry[] = GIFT_CATALOG.filter((g) =>
       g.name.toLowerCase().includes(q),
     );
     if (q && !list.some((g) => g.name.toLowerCase() === q)) {
-      return [...list, { name: search.trim(), emoji: "➕", coins: undefined }];
+      list = [...list, { name: search.trim(), emoji: "➕" }];
+    }
+    if (editing && !q && !list.some((g) => g.name === editing)) {
+      list = [{ name: editing, emoji: giftEmoji(editing) }, ...list];
+    } else if (editing && !q) {
+      const current = list.find((g) => g.name === editing);
+      if (current) {
+        list = [current, ...list.filter((g) => g.name !== editing)];
+      }
     }
     return list;
-  }, [search]);
+  }, [search, editing]);
+
+  function openAdd() {
+    setEditing(null);
+    setSelGift(null);
+    setSearch("");
+    setSelAction("push_back");
+    setModal(true);
+  }
+
+  function openEdit(name: string) {
+    setEditing(name);
+    setSelGift(name);
+    setSearch("");
+    setSelAction(bindings[name] ?? "push_back");
+    setModal(true);
+  }
+
+  function commitGift() {
+    if (!selGift) {
+      showToast("Pick a gift first");
+      return;
+    }
+    if (editing && editing !== selGift && bindings[selGift]) {
+      showToast("That gift is already in the list");
+      return;
+    }
+    const next = { ...bindings };
+    if (editing && editing !== selGift) delete next[editing];
+    next[selGift] = selAction;
+    void saveBindings(next);
+    setModal(false);
+  }
 
   const actionOptions = Object.entries(ACTIONS).map(([k, v]) => (
     <option key={k} value={k}>
@@ -211,18 +254,13 @@ export function GameDashboard({
               <div>
                 <h2 className="text-base font-semibold">Gifts &amp; events</h2>
                 <p className="mt-1 text-sm text-[var(--mute)]">
-                  Pick what each gift does. Test while the game window is open.
+                  Click a gift to change it. Test while the game window is open.
                 </p>
               </div>
               <button
                 type="button"
                 className="rounded-lg border border-[var(--line)] bg-[var(--field)] px-3 py-2"
-                onClick={() => {
-                  setSelGift(null);
-                  setSearch("");
-                  setSelAction("push_back");
-                  setModal(true);
-                }}
+                onClick={openAdd}
               >
                 Add
               </button>
@@ -233,17 +271,24 @@ export function GameDashboard({
             {Object.entries(bindings).map(([name, action]) => (
               <div
                 key={name}
-                className="grid grid-cols-[44px_1fr_170px_38px_38px] items-center gap-2.5 border-t border-[var(--line)] py-3"
+                className="grid grid-cols-[1fr_170px_38px_38px] items-center gap-2.5 border-t border-[var(--line)] py-3"
               >
-                <div className="flex h-[42px] w-[42px] items-center justify-center rounded-[10px] bg-[var(--field)] text-xl">
-                  {giftEmoji(name)}
-                </div>
-                <div>
-                  <b>{name}</b>
-                  <p className="m-0 text-xs text-[var(--mute)]">
-                    {ACTIONS[action]?.label}, {ACTIONS[action]?.description}
-                  </p>
-                </div>
+                <button
+                  type="button"
+                  title="Change gift"
+                  className="flex min-w-0 items-center gap-2.5 rounded-lg text-left hover:bg-[var(--field)]"
+                  onClick={() => openEdit(name)}
+                >
+                  <div className="flex h-[42px] w-[42px] flex-none items-center justify-center rounded-[10px] bg-[var(--field)] text-xl">
+                    {giftEmoji(name)}
+                  </div>
+                  <div className="min-w-0">
+                    <b>{name}</b>
+                    <p className="m-0 text-xs text-[var(--mute)]">
+                      {ACTIONS[action]?.label}, {ACTIONS[action]?.description}
+                    </p>
+                  </div>
+                </button>
                 <select
                   className="w-full rounded-lg border border-[var(--line)] bg-[var(--field)] px-2 py-2 text-xs font-semibold"
                   value={action}
@@ -455,7 +500,9 @@ export function GameDashboard({
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
           <div className="w-[min(480px,92vw)] rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-4">
-            <h2 className="text-base font-semibold">Add a gift</h2>
+            <h2 className="text-base font-semibold">
+              {editing ? "Change gift" : "Add a gift"}
+            </h2>
             <input
               type="text"
               placeholder="Search gifts (Rose, Galaxy, Lion…)"
@@ -465,21 +512,24 @@ export function GameDashboard({
               autoFocus
             />
             <div className="my-2.5 flex max-h-[210px] flex-wrap gap-1.5 overflow-y-auto">
-              {filtered.map((g) => (
-                <button
-                  key={g.name}
-                  type="button"
-                  className={`rounded-lg border px-2.5 py-1.5 text-sm ${
-                    selGift === g.name
-                      ? "border-[var(--acc)] bg-[#14333a]"
-                      : "border-[var(--line)] bg-[var(--field)]"
-                  }`}
-                  onClick={() => setSelGift(g.name)}
-                >
-                  {g.emoji} {g.name}
-                  {g.coins != null ? ` · ${g.coins}` : ""}
-                </button>
-              ))}
+              {filtered.map((g) => {
+                const coins = formatGiftCoins(g.coins);
+                return (
+                  <button
+                    key={g.name}
+                    type="button"
+                    className={`rounded-lg border px-2.5 py-1.5 text-sm ${
+                      selGift === g.name
+                        ? "border-[var(--acc)] bg-[#14333a]"
+                        : "border-[var(--line)] bg-[var(--field)]"
+                    }`}
+                    onClick={() => setSelGift(g.name)}
+                  >
+                    {g.emoji} {g.name}
+                    {coins ? ` · ${coins}` : ""}
+                  </button>
+                );
+              })}
             </div>
             <select
               className="w-full rounded-lg border border-[var(--line)] bg-[var(--field)] px-2 py-2"
@@ -499,16 +549,9 @@ export function GameDashboard({
               <button
                 type="button"
                 className="rounded-lg border border-[var(--acc)] bg-[var(--acc)] px-3 py-2 font-bold text-[#05181c]"
-                onClick={() => {
-                  if (!selGift) {
-                    showToast("Pick a gift first");
-                    return;
-                  }
-                  void saveBindings({ ...bindings, [selGift]: selAction });
-                  setModal(false);
-                }}
+                onClick={commitGift}
               >
-                Add
+                {editing ? "Save" : "Add"}
               </button>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import { randomBytes } from "crypto";
-import { ACTIONS } from "./gifts";
+import { ACTIONS, hasCaseDistinctGifts } from "./gifts";
 import { fingerprintSeen, publishAction } from "./live";
 
 export function generateHookToken(): string {
@@ -55,6 +55,10 @@ export function resolveBinding(
   bindings: Record<string, string>,
   giftName: string,
 ): string | null {
+  const exact = bindings[giftName];
+  if (exact && exact in ACTIONS) return exact;
+  if (hasCaseDistinctGifts(giftName)) return null;
+
   const key = Object.keys(bindings).find(
     (g) => g.toLowerCase() === giftName.toLowerCase(),
   );

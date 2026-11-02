@@ -3,6 +3,7 @@ import {
   DEFAULT_BINDINGS,
   DEFAULT_SETTINGS,
   isAction,
+  normalizeBindingNames,
   type GameSettings,
 } from "./gifts";
 import { getGame } from "@/games/registry";
@@ -33,7 +34,7 @@ export function asBindings(value: unknown): Record<string, string> {
   for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
     if (typeof v === "string" && isAction(v)) out[k] = v;
   }
-  return out;
+  return normalizeBindingNames(out);
 }
 
 export function asSettings(value: unknown): GameSettings {

@@ -9,7 +9,9 @@ COPY prisma ./prisma
 # Dummy URL so `prisma generate` (postinstall) can read the schema.
 # Coolify replaces DATABASE_URL at runtime.
 ENV DATABASE_URL="file:./dev.db"
-RUN npm install
+# Coolify sets NODE_ENV=production at build time, which skips devDependencies.
+# Tailwind, TypeScript, and Prisma CLI are required for `next build`.
+RUN npm install --include=dev
 
 COPY . .
 RUN npm run build

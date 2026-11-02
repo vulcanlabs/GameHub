@@ -86,4 +86,12 @@ describe("processGiftForUser", () => {
     expect(resolveBinding(DEFAULT_BINDINGS, "rose")).toBe("push_back");
     expect(resolveBinding(DEFAULT_BINDINGS, "LION")).toBe("spawn_monster");
   });
+
+  it("does not cross-match Love you and Love You", () => {
+    const bindings = { "Love You": "up_5", "Love you": "push_back" };
+    expect(resolveBinding(bindings, "Love You")).toBe("up_5");
+    expect(resolveBinding(bindings, "Love you")).toBe("push_back");
+    expect(resolveBinding(bindings, "love you")).toBeNull();
+    expect(resolveBinding({ "Love You": "up_5" }, "Love you")).toBeNull();
+  });
 });
