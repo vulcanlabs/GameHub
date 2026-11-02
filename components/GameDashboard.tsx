@@ -184,239 +184,234 @@ export function GameDashboard({
   ));
 
   return (
-    <div className="mx-auto max-w-[1100px] px-8 py-8 pb-16">
-      <div className="mb-5 flex flex-wrap items-center gap-5">
-        <div className="flex h-24 w-24 items-center justify-center rounded-[18px] border border-[var(--line)] bg-gradient-to-br from-[#3b6b73] to-[#0b1b1f] text-4xl">
+    <div className="space-y-5 pb-4">
+      <div className="flex items-center gap-4 rounded-[32px] bg-[var(--orange)] px-5 py-4 text-[var(--card-ink)] shadow-[0_18px_40px_rgba(22,48,52,0.18)]">
+        <div className="flex h-16 w-16 flex-none items-center justify-center rounded-full bg-white/50 text-4xl">
           {game.emoji}
         </div>
-        <div>
-          <h1 className="text-3xl font-bold">{game.title}</h1>
-          <div className="mt-2 flex gap-1.5">
-            <button
-              type="button"
-              className={`rounded-lg bg-[var(--field)] px-3 py-2 text-xs font-semibold tracking-wide ${
-                tab === "ov" ? "shadow-[inset_0_-2px_var(--acc)]" : ""
-              }`}
-              onClick={() => setTab("ov")}
-            >
-              OVERVIEW
-            </button>
-            <button
-              type="button"
-              className={`rounded-lg bg-[var(--field)] px-3 py-2 text-xs font-semibold tracking-wide ${
-                tab === "st" ? "shadow-[inset_0_-2px_var(--acc)]" : ""
-              }`}
-              onClick={() => setTab("st")}
-            >
-              SETTINGS
-            </button>
-          </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-bold tracking-[0.22em]">
+            {game.genre.toUpperCase()}
+          </p>
+          <h1 className="truncate text-3xl leading-none font-extrabold tracking-tight">
+            {game.title}
+          </h1>
+          <p className="mt-1 text-base">
+            {game.version} · {Object.keys(bindings).length} gifts · hook ready
+          </p>
         </div>
         <button
           type="button"
           onClick={play}
-          className="rounded-full bg-white px-8 py-3 text-base font-bold text-[#111] shadow-[0_0_30px_#5ad1e655]"
+          className="h-14 flex-none rounded-full bg-[var(--card-ink)] px-8 text-lg font-bold text-[var(--ink)]"
         >
           Play
         </button>
-        <div className="ml-auto grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
-          <div>
-            <small className="block tracking-wide text-[var(--mute)]">
-              GAME
-            </small>
-            {game.genre}
-          </div>
-          <div>
-            <small className="block tracking-wide text-[var(--mute)]">
-              SET UP
-            </small>
-            {Object.keys(bindings).length} gifts
-          </div>
-          <div>
-            <small className="block tracking-wide text-[var(--mute)]">
-              VERSION
-            </small>
-            {game.version}
-          </div>
-          <div>
-            <small className="block tracking-wide text-[var(--mute)]">
-              HOOK
-            </small>
-            Ready
-          </div>
-        </div>
+      </div>
+
+      <div className="grid max-w-md grid-cols-2 gap-1 rounded-full bg-[var(--card)] p-1.5">
+        <button
+          type="button"
+          className={`h-14 rounded-full text-base font-bold ${
+            tab === "ov"
+              ? "bg-[var(--card-ink)] text-[var(--ink)]"
+              : "text-[var(--card-mute)]"
+          }`}
+          onClick={() => setTab("ov")}
+        >
+          Overview
+        </button>
+        <button
+          type="button"
+          className={`h-14 rounded-full text-base font-bold ${
+            tab === "st"
+              ? "bg-[var(--card-ink)] text-[var(--ink)]"
+              : "text-[var(--card-mute)]"
+          }`}
+          onClick={() => setTab("st")}
+        >
+          Settings
+        </button>
       </div>
 
       {tab === "ov" ? (
-        <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
-          <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-4">
-            <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="grid items-start gap-4 lg:grid-cols-[1.5fr_1fr]">
+          <section className="rounded-[32px] bg-[var(--card)] p-5 text-[var(--card-ink)]">
+            <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-base font-semibold">Gifts &amp; events</h2>
-                <p className="mt-1 text-sm text-[var(--mute)]">
-                  Click a gift to change it. Test while the game window is open.
+                <h2 className="text-2xl font-extrabold tracking-tight">
+                  Gifts
+                </h2>
+                <p className="mt-1 text-base text-[var(--card-mute)]">
+                  Tap a gift to change it. Test while the game window is open.
                 </p>
               </div>
               <button
                 type="button"
-                className="rounded-lg border border-[var(--line)] bg-[var(--field)] px-3 py-2"
+                className="h-12 flex-none rounded-full bg-[var(--sand)] px-5 text-base font-bold"
                 onClick={openAdd}
               >
-                Add
+                Add gift
               </button>
             </div>
             {Object.keys(bindings).length === 0 && (
-              <p className="text-[var(--mute)]">No gifts yet. Press Add.</p>
+              <p className="mt-4 text-lg text-[var(--card-mute)]">
+                No gifts yet.
+              </p>
             )}
-            {Object.entries(bindings).map(([name, action]) => (
-              <div
-                key={name}
-                className="grid grid-cols-[1fr_170px_38px_38px] items-center gap-2.5 border-t border-[var(--line)] py-3"
-              >
-                <button
-                  type="button"
-                  title="Change gift"
-                  className="flex min-w-0 items-center gap-2.5 rounded-lg text-left hover:bg-[var(--field)]"
-                  onClick={() => openEdit(name)}
+            <ul className="mt-4 space-y-2">
+              {Object.entries(bindings).map(([name, action]) => (
+                <li
+                  key={name}
+                  className="flex items-center gap-2 overflow-x-auto rounded-[24px] bg-[var(--sand)] px-2 py-2"
                 >
-                  <div className="flex h-[42px] w-[42px] flex-none items-center justify-center rounded-[10px] bg-[var(--field)] text-xl">
-                    {giftEmoji(name)}
-                  </div>
-                  <div className="min-w-0">
-                    <b>{name}</b>
-                    <p className="m-0 text-xs text-[var(--mute)]">
-                      {ACTIONS[action]?.label}, {ACTIONS[action]?.description}
-                    </p>
-                  </div>
-                </button>
-                <select
-                  className="w-full rounded-lg border border-[var(--line)] bg-[var(--field)] px-2 py-2 text-xs font-semibold"
-                  value={action}
-                  onChange={(e) => {
-                    const next = { ...bindings, [name]: e.target.value };
-                    void saveBindings(next);
-                  }}
-                >
-                  {actionOptions}
-                </select>
-                <button
-                  type="button"
-                  title="Test"
-                  className="h-9 w-[38px] rounded-lg border border-[var(--line)] bg-[var(--field)]"
-                  onClick={() => void testGift(name)}
-                >
-                  ▶
-                </button>
-                <button
-                  type="button"
-                  title="Remove"
-                  className="h-9 w-[38px] rounded-lg border border-[var(--line)] bg-[var(--field)]"
-                  onClick={() => {
-                    const next = { ...bindings };
-                    delete next[name];
-                    void saveBindings(next);
-                  }}
-                >
-                  ⌫
-                </button>
-              </div>
-            ))}
-          </div>
+                  <button
+                    type="button"
+                    title="Change gift"
+                    className="flex min-w-44 flex-1 items-center gap-3 text-left"
+                    onClick={() => openEdit(name)}
+                  >
+                    <span className="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-[var(--card)] text-xl">
+                      {giftEmoji(name)}
+                    </span>
+                    <span className="min-w-0">
+                      <b className="block truncate text-base">{name}</b>
+                      <span className="block truncate text-sm text-[var(--card-mute)]">
+                        {ACTIONS[action]?.description}
+                      </span>
+                    </span>
+                  </button>
+                  <select
+                    className="h-12 w-40 flex-none rounded-full bg-[var(--card)] px-3 text-sm font-bold text-[var(--card-ink)]"
+                    value={action}
+                    onChange={(e) => {
+                      const next = { ...bindings, [name]: e.target.value };
+                      void saveBindings(next);
+                    }}
+                  >
+                    {actionOptions}
+                  </select>
+                  <button
+                    type="button"
+                    className="h-12 flex-none rounded-full bg-[var(--card-ink)] px-4 text-sm font-bold text-[var(--ink)]"
+                    onClick={() => void testGift(name)}
+                  >
+                    Test
+                  </button>
+                  <button
+                    type="button"
+                    className="h-12 flex-none rounded-full bg-[var(--card)] px-4 text-sm font-bold"
+                    onClick={() => {
+                      const next = { ...bindings };
+                      delete next[name];
+                      void saveBindings(next);
+                    }}
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
 
-          <div className="space-y-3.5">
-            <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-4">
-              <div className="mb-2 flex items-center justify-between">
-                <h2 className="text-base font-semibold">Status</h2>
-                <span className="rounded-full bg-[#14333a] px-2.5 py-0.5 text-xs text-[var(--acc)]">
-                  Ready
+          <div className="space-y-4">
+          <section className="rounded-[32px] bg-[var(--card)] p-5 text-[var(--card-ink)]">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-2xl font-extrabold tracking-tight">Status</h2>
+              <span className="rounded-full bg-[#d9f6ef] px-3 py-1 text-sm font-bold text-[var(--ok)]">
+                Ready
+              </span>
+            </div>
+            <p className="mt-3 text-lg text-[var(--card-mute)]">
+              Gifts from your LIVE trigger the actions you set here.
+            </p>
+            <ol className="mt-4 space-y-4 text-base">
+              <li className="flex gap-3">
+                <b className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[var(--sand)]">
+                  1
+                </b>
+                <span>
+                  Press Play. The game opens in its own window. Click inside it
+                  to start.
                 </span>
-              </div>
-              <div className="text-xl font-bold">Ready to play</div>
-              <p className="text-sm text-[var(--mute)]">
-                Gifts from your LIVE trigger the actions you set here.
-              </p>
-              <ol className="mt-3 space-y-2 text-sm">
-                <li className="flex gap-2">
-                  <b className="flex h-6 w-6 flex-none items-center justify-center rounded-full border border-[var(--line)] text-xs">
-                    1
-                  </b>
-                  <span>
-                    Press Play. The game opens in its own window. Click inside
-                    it to start.
-                  </span>
-                </li>
-                <li className="flex gap-2">
-                  <b className="flex h-6 w-6 flex-none items-center justify-center rounded-full border border-[var(--line)] text-xs">
-                    2
-                  </b>
-                  <span>
-                    Run the TikFinity bridge with your hook URL (below). Keep
-                    this hub open.
-                  </span>
-                </li>
-                <li className="flex gap-2">
-                  <b className="flex h-6 w-6 flex-none items-center justify-center rounded-full border border-[var(--line)] text-xs">
-                    3
-                  </b>
-                  <span>
-                    WASD move, Shift sprint, Space jump/climb. F1–F12 also fire
-                    actions in the game window.
-                  </span>
-                </li>
-              </ol>
-            </div>
+              </li>
+              <li className="flex gap-3">
+                <b className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[var(--sand)]">
+                  2
+                </b>
+                <span>
+                  Run the TikFinity bridge with your hook URL. Keep this hub
+                  open.
+                </span>
+              </li>
+              <li className="flex gap-3">
+                <b className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[var(--sand)]">
+                  3
+                </b>
+                <span>
+                  WASD move, Shift sprint, Space jump/climb. F1–F12 also fire actions
+                  in the game window.
+                </span>
+              </li>
+            </ol>
+          </section>
 
-            <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-4">
-              <h2 className="mb-2 text-base font-semibold">Your TikFinity hook</h2>
-              <p className="mb-2 text-sm text-[var(--mute)]">
-                Paste this into the bridge. Anyone with the URL can send gifts
-                as you — rotate if it leaks.
-              </p>
-              <code className="block break-all rounded-lg bg-[var(--field)] p-2 text-xs">
-                {hook.url}
-              </code>
-              <div className="mt-2 flex gap-2">
-                <button
-                  type="button"
-                  className="rounded-lg border border-[var(--line)] bg-[var(--field)] px-3 py-2"
-                  onClick={async () => {
-                    await navigator.clipboard.writeText(hook.url);
-                    showToast("Copied hook URL");
-                  }}
-                >
-                  Copy
-                </button>
-                <button
-                  type="button"
-                  disabled={busy}
-                  className="rounded-lg border border-[var(--line)] bg-[var(--field)] px-3 py-2"
-                  onClick={() => void rotateHook()}
-                >
-                  Rotate
-                </button>
-              </div>
+          <section className="rounded-[32px] bg-[var(--card)] p-5 text-[var(--card-ink)]">
+            <h2 className="text-2xl font-extrabold tracking-tight">Hook</h2>
+            <p className="mt-2 text-base text-[var(--card-mute)]">
+              Paste this into the bridge. Anyone with the URL can send gifts as
+              you. Rotate it if it leaks.
+            </p>
+            <code className="mt-4 block rounded-[24px] bg-[var(--sand)] p-4 text-base break-all">
+              {hook.url}
+            </code>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                className="h-14 rounded-full bg-[var(--card-ink)] text-base font-bold text-[var(--ink)]"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(hook.url);
+                  showToast("Copied hook URL");
+                }}
+              >
+                Copy
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                className="h-14 rounded-full bg-[var(--sand)] text-base font-bold disabled:opacity-50"
+                onClick={() => void rotateHook()}
+              >
+                Rotate
+              </button>
             </div>
+          </section>
 
-            <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-4">
-              <h2 className="mb-2 text-base font-semibold">Activity</h2>
-              {log.length === 0 ? (
-                <div className="text-xs text-[var(--mute)]">Nothing yet.</div>
-              ) : (
-                log.map((l, i) => (
-                  <div key={`${l.t}-${i}`} className="text-xs text-[var(--mute)]">
+          <section className="rounded-[32px] bg-[var(--card)] p-5 text-[var(--card-ink)]">
+            <h2 className="text-2xl font-extrabold tracking-tight">Activity</h2>
+            {log.length === 0 ? (
+              <p className="mt-3 text-lg text-[var(--card-mute)]">Nothing yet.</p>
+            ) : (
+              <div className="mt-3 space-y-2">
+                {log.map((l, i) => (
+                  <p
+                    key={`${l.t}-${i}`}
+                    className="text-base text-[var(--card-mute)]"
+                  >
                     {l.t} {l.text}
-                  </div>
-                ))
-              )}
-            </div>
+                  </p>
+                ))}
+              </div>
+            )}
+          </section>
           </div>
         </div>
       ) : (
-        <div className="max-w-md space-y-3.5 rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-4">
-          <label className="grid gap-1.5 text-sm text-[var(--mute)]">
+        <div className="space-y-4 rounded-[32px] bg-[var(--card)] p-5 text-[var(--card-ink)]">
+          <label className="grid gap-2 text-base font-bold text-[var(--card-mute)]">
             Monster
             <select
-              className="rounded-lg border border-[var(--line)] bg-[var(--field)] px-2 py-2 font-semibold text-[var(--ink)]"
+              className="h-14 rounded-full bg-[var(--sand)] px-4 text-base font-bold text-[var(--card-ink)]"
               value={settings.monster}
               onChange={(e) =>
                 void saveSettings({
@@ -431,10 +426,10 @@ export function GameDashboard({
               <option value="shadow">Shadow</option>
             </select>
           </label>
-          <label className="grid gap-1.5 text-sm text-[var(--mute)]">
+          <label className="grid gap-2 text-base font-bold text-[var(--card-mute)]">
             Parkour difficulty
             <select
-              className="rounded-lg border border-[var(--line)] bg-[var(--field)] px-2 py-2 font-semibold text-[var(--ink)]"
+              className="h-14 rounded-full bg-[var(--sand)] px-4 text-base font-bold text-[var(--card-ink)]"
               value={settings.diff}
               onChange={(e) =>
                 void saveSettings({
@@ -449,13 +444,15 @@ export function GameDashboard({
               <option value={3}>Nightmare</option>
             </select>
           </label>
-          <label className="grid gap-1.5 text-sm text-[var(--mute)]">
-            Field of view: <b className="text-[var(--ink)]">{settings.fov}°</b>
+          <label className="grid gap-2 text-base font-bold text-[var(--card-mute)]">
+            Field of view:{" "}
+            <b className="text-[var(--card-ink)]">{settings.fov}°</b>
             <input
               type="range"
               min={60}
               max={120}
               value={settings.fov}
+              className="h-8 accent-[var(--orange)]"
               onChange={(e) =>
                 void saveSettings({
                   ...settings,
@@ -464,14 +461,15 @@ export function GameDashboard({
               }
             />
           </label>
-          <label className="grid gap-1.5 text-sm text-[var(--mute)]">
+          <label className="grid gap-2 text-base font-bold text-[var(--card-mute)]">
             Push strength:{" "}
-            <b className="text-[var(--ink)]">{settings.push}</b>
+            <b className="text-[var(--card-ink)]">{settings.push}</b>
             <input
               type="range"
               min={6}
               max={24}
               value={settings.push}
+              className="h-8 accent-[var(--orange)]"
               onChange={(e) =>
                 void saveSettings({
                   ...settings,
@@ -480,11 +478,11 @@ export function GameDashboard({
               }
             />
           </label>
-          <label className="grid gap-1.5 text-sm text-[var(--mute)]">
+          <label className="grid gap-2 text-base font-bold text-[var(--card-mute)]">
             Custom checkpoint amount (negative goes back)
             <input
               type="number"
-              className="rounded-lg border border-[var(--line)] bg-[var(--field)] px-2 py-2 font-semibold text-[var(--ink)]"
+              className="h-14 rounded-full bg-[var(--sand)] px-4 text-base font-bold text-[var(--card-ink)]"
               value={settings.custom}
               onChange={(e) =>
                 void saveSettings({
@@ -498,30 +496,30 @@ export function GameDashboard({
       )}
 
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-          <div className="w-[min(480px,92vw)] rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-4">
-            <h2 className="text-base font-semibold">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#163033]/45 p-3 sm:items-center">
+          <div className="max-h-[88vh] w-full max-w-[480px] overflow-y-auto rounded-[32px] bg-[var(--card)] p-5 text-[var(--card-ink)]">
+            <h2 className="text-3xl font-extrabold tracking-tight">
               {editing ? "Change gift" : "Add a gift"}
             </h2>
             <input
               type="text"
               placeholder="Search gifts (Rose, Galaxy, Lion…)"
-              className="mt-2.5 w-full rounded-lg border border-[var(--line)] bg-[var(--field)] px-2 py-2"
+              className="mt-4 h-14 w-full rounded-full bg-[var(--sand)] px-4 text-base"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               autoFocus
             />
-            <div className="my-2.5 flex max-h-[210px] flex-wrap gap-1.5 overflow-y-auto">
+            <div className="my-4 flex max-h-[240px] flex-wrap gap-2 overflow-y-auto">
               {filtered.map((g) => {
                 const coins = formatGiftCoins(g.coins);
                 return (
                   <button
                     key={g.name}
                     type="button"
-                    className={`rounded-lg border px-2.5 py-1.5 text-sm ${
+                    className={`h-12 rounded-full px-4 text-base font-bold ${
                       selGift === g.name
-                        ? "border-[var(--acc)] bg-[#14333a]"
-                        : "border-[var(--line)] bg-[var(--field)]"
+                        ? "bg-[var(--card-ink)] text-[var(--ink)]"
+                        : "bg-[var(--sand)]"
                     }`}
                     onClick={() => setSelGift(g.name)}
                   >
@@ -532,23 +530,23 @@ export function GameDashboard({
               })}
             </div>
             <select
-              className="w-full rounded-lg border border-[var(--line)] bg-[var(--field)] px-2 py-2"
+              className="h-14 w-full rounded-full bg-[var(--sand)] px-4 text-base font-bold"
               value={selAction}
               onChange={(e) => setSelAction(e.target.value)}
             >
               {actionOptions}
             </select>
-            <div className="mt-3 flex justify-end gap-2">
+            <div className="mt-4 grid grid-cols-2 gap-2">
               <button
                 type="button"
-                className="rounded-lg border border-[var(--line)] bg-[var(--field)] px-3 py-2"
+                className="h-14 rounded-full bg-[var(--sand)] text-base font-bold"
                 onClick={() => setModal(false)}
               >
                 Cancel
               </button>
               <button
                 type="button"
-                className="rounded-lg border border-[var(--acc)] bg-[var(--acc)] px-3 py-2 font-bold text-[#05181c]"
+                className="h-14 rounded-full bg-[var(--card-ink)] text-base font-bold text-[var(--ink)]"
                 onClick={commitGift}
               >
                 {editing ? "Save" : "Add"}
@@ -559,7 +557,7 @@ export function GameDashboard({
       )}
 
       {toast && (
-        <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-[10px] bg-white px-4 py-2 font-semibold text-[#111]">
+        <div className="fixed bottom-28 left-1/2 z-50 max-w-[90vw] -translate-x-1/2 rounded-full bg-[var(--card)] px-5 py-3 text-base font-bold text-[var(--card-ink)] shadow-[0_12px_30px_rgba(22,48,52,0.2)]">
           {toast}
         </div>
       )}

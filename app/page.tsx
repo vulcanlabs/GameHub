@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { HubShell } from "@/components/HubShell";
+import { GameRow } from "@/components/GameRow";
 import { GAMES } from "@/games/registry";
 import { auth } from "@/lib/auth";
 import { canAccessGames } from "@/lib/roles";
@@ -13,45 +14,54 @@ export default async function HomePage() {
 
   return (
     <HubShell active="home">
-      <div className="mx-auto max-w-[1100px] px-8 py-8">
-        <h1 className="text-3xl font-bold">Home</h1>
-        <p className="mt-1 text-[var(--mute)]">
-          Your LIVE interactive games. Keep the hub open while you stream, and
-          run the TikFinity bridge on the same PC as TikFinity.
-        </p>
+      <p className="text-xs font-bold tracking-[0.22em]">TONIGHT</p>
+      <h1 className="mt-2 text-5xl leading-none font-extrabold tracking-tight">
+        Home
+      </h1>
+      <p className="mt-3 text-lg text-[var(--mute)]">
+        Keep this hub open while you stream. Run the TikFinity bridge on the
+        same PC as TikFinity.
+      </p>
 
-        {!gamesOk && (
-          <div className="mt-6 rounded-2xl border border-[var(--bad)]/40 bg-[#2a1515] p-4">
-            <b className="text-[var(--bad)]">Account pending activation</b>
-            <p className="mt-1 text-sm text-[var(--mute)]">
-              You are signed in, but an admin must activate your account before
-              games unlock.
-            </p>
-          </div>
-        )}
+      {session?.user && !gamesOk && (
+        <div className="mt-6 rounded-[28px] bg-[var(--card)] p-5 text-[var(--card-ink)]">
+          <b className="text-xl text-[var(--bad)]">Account pending</b>
+          <p className="mt-2 text-lg text-[var(--card-mute)]">
+            You are signed in. An admin must activate your account before games
+            unlock.
+          </p>
+        </div>
+      )}
 
-        {gamesOk ? (
-          <div className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(230px,1fr))] gap-4">
-            {GAMES.map((g) => (
-              <Link
-                key={g.slug}
-                href={`/games/${g.slug}`}
-                className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--panel)]"
-              >
-                <div className="flex h-[130px] items-center justify-center bg-gradient-to-br from-[#3b6b73] to-[#0b1b1f] text-5xl">
-                  {g.emoji}
-                </div>
-                <div className="px-3.5 py-3">
-                  <b>{g.title}</b>
-                  <div className="text-[var(--mute)]">
-                    {g.genre} · {g.version}
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        ) : null}
-      </div>
+      {!session?.user && (
+        <Link
+          href="/login"
+          className="mt-6 block rounded-[36px] bg-[var(--card)] p-7 text-[var(--card-ink)] shadow-[0_18px_40px_rgba(22,48,52,0.18)]"
+        >
+          <p className="text-xs font-bold tracking-[0.22em] text-[var(--card-mute)]">
+            START
+          </p>
+          <h2 className="mt-3 text-4xl leading-none font-extrabold tracking-tight">
+            Sign in to play
+          </h2>
+          <p className="mt-3 text-lg text-[var(--card-mute)]">
+            Google opens your games, hook URL, and gift map.
+          </p>
+          <span className="mt-6 inline-flex h-14 items-center rounded-full bg-[var(--card-ink)] px-6 text-lg font-bold text-[var(--ink)]">
+            Continue
+          </span>
+        </Link>
+      )}
+
+      {gamesOk ? (
+        <ul className="mt-6 space-y-3">
+          {GAMES.map((g, i) => (
+            <li key={g.slug}>
+              <GameRow game={g} index={i} />
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </HubShell>
   );
 }

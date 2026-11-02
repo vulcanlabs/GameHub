@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { HubShell } from "@/components/HubShell";
+import { GameRow } from "@/components/GameRow";
 import { PendingAccess } from "@/components/PendingAccess";
 import { GAMES } from "@/games/registry";
 import { auth } from "@/lib/auth";
@@ -20,31 +20,22 @@ export default async function LibraryPage() {
 
   return (
     <HubShell active="library">
-      <div className="mx-auto max-w-[1100px] px-8 py-8">
-        <h1 className="text-3xl font-bold">Library</h1>
-        <p className="mt-1 text-[var(--mute)]">
-          Games registered in this workshop. Add a folder under{" "}
-          <code className="text-[var(--acc)]">games/</code> and a row in{" "}
-          <code className="text-[var(--acc)]">games/registry.ts</code>.
-        </p>
-        <ul className="mt-6 space-y-3">
-          {GAMES.map((g) => (
-            <li key={g.slug}>
-              <Link
-                href={`/games/${g.slug}`}
-                className="flex items-center gap-4 rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-4 hover:border-[var(--acc)]"
-              >
-                <span className="text-3xl">{g.emoji}</span>
-                <div>
-                  <b>{g.title}</b>
-                  <p className="text-[var(--mute)]">{g.blurb}</p>
-                </div>
-                <span className="ml-auto text-[var(--mute)]">{g.version}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <p className="text-xs font-bold tracking-[0.22em]">WORKSHOP</p>
+      <h1 className="mt-2 text-5xl leading-none font-extrabold tracking-tight">
+        Library
+      </h1>
+      <p className="mt-3 text-lg text-[var(--mute)]">
+        Games registered here. Add a folder under{" "}
+        <code className="font-bold">games/</code> and a row in{" "}
+        <code className="font-bold">games/registry.ts</code>.
+      </p>
+      <ul className="mt-6 space-y-3">
+        {GAMES.map((g, i) => (
+          <li key={g.slug}>
+            <GameRow game={g} index={i} />
+          </li>
+        ))}
+      </ul>
     </HubShell>
   );
 }

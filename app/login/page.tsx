@@ -15,22 +15,29 @@ export default async function LoginPage({
   const configured = isGoogleAuthConfigured();
 
   return (
-    <div className="flex min-h-full items-center justify-center p-8">
-      <div className="w-full max-w-md rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-8">
-        <h1 className="text-2xl font-bold">Sign in to Game Hub</h1>
-        <p className="mt-2 text-[var(--mute)]">
-          Google is the only login. Each account gets its own TikFinity hook URL
+    <div className="flex min-h-full items-center justify-center px-4 py-10">
+      <div className="w-full max-w-[480px] rounded-[36px] bg-[var(--card)] p-7 text-[var(--card-ink)] shadow-[0_18px_40px_rgba(22,48,52,0.18)]">
+        <p className="text-xs font-bold tracking-[0.22em] text-[var(--card-mute)]">
+          GAME HUB
+        </p>
+        <h1 className="mt-3 text-5xl leading-none font-extrabold tracking-tight">
+          Sign in
+        </h1>
+        <p className="mt-4 text-lg text-[var(--card-mute)]">
+          Google is the only login. Each account gets its own TikFinity hook
           and gift bindings.
         </p>
 
         {!configured ? (
-          <div className="mt-6 rounded-xl border border-[var(--bad)]/40 bg-[#2a1515] p-4 text-sm">
-            <b className="text-[var(--bad)]">Google OAuth is not configured</b>
-            <p className="mt-2 text-[var(--mute)]">
+          <div className="mt-6 rounded-[28px] bg-[#fde8ea] p-5 text-base">
+            <b className="text-lg text-[var(--bad)]">
+              Google OAuth is not configured
+            </b>
+            <p className="mt-2 text-[var(--card-mute)]">
               Set <code>AUTH_GOOGLE_ID</code> and <code>AUTH_GOOGLE_SECRET</code>{" "}
               in <code>.env</code>. Create an OAuth client in Google Cloud with
               redirect URI{" "}
-              <code className="break-all text-[var(--acc)]">
+              <code className="break-all font-bold text-[var(--card-ink)]">
                 http://localhost:3000/api/auth/callback/google
               </code>
               . See the README.
@@ -38,7 +45,7 @@ export default async function LoginPage({
           </div>
         ) : (
           <form
-            className="mt-6"
+            className="mt-8"
             action={async () => {
               "use server";
               await signIn("google", {
@@ -48,7 +55,7 @@ export default async function LoginPage({
           >
             <button
               type="submit"
-              className="w-full rounded-full bg-white px-6 py-3 font-bold text-[#111]"
+              className="h-16 w-full rounded-full bg-[var(--card-ink)] text-xl font-bold text-[var(--ink)]"
             >
               Continue with Google
             </button>
@@ -56,7 +63,7 @@ export default async function LoginPage({
         )}
 
         {params.error && (
-          <p className="mt-4 text-sm text-[var(--bad)]">
+          <p className="mt-4 text-base font-semibold text-[var(--bad)]">
             Sign-in error: {params.error}
           </p>
         )}

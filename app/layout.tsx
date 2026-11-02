@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
+import { Outfit } from "next/font/google";
+import { HubAtmosphere } from "@/components/HubAtmosphere";
 import "./globals.css";
+
+const outfit = Outfit({
+  subsets: ["latin"],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Game Hub",
@@ -12,8 +19,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="antialiased">{children}</body>
+    <html lang="en" className={outfit.className}>
+      <body className="antialiased">
+        <HubAtmosphere />
+        {children}
+      </body>
     </html>
   );
 }

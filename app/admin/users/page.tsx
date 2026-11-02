@@ -25,21 +25,22 @@ export default async function AdminUsersPage() {
 
   return (
     <HubShell active="admin-users">
-      <div className="mx-auto max-w-[1100px] px-8 py-8">
-        <h1 className="text-3xl font-bold">Users</h1>
-        <p className="mt-1 text-[var(--mute)]">
-          New accounts stay inactive until you activate them. Only active users
-          can open games. Admins stay active.
-        </p>
-        <div className="mt-6">
-          <AdminUsersTable
-            currentUserId={session.user.id}
-            initialUsers={users.map((u) => ({
-              ...u,
-              createdAt: u.createdAt.toISOString(),
-            }))}
-          />
-        </div>
+      <p className="text-xs font-bold tracking-[0.22em]">ADMIN</p>
+      <h1 className="mt-2 text-5xl leading-none font-extrabold tracking-tight">
+        Users
+      </h1>
+      <p className="mt-3 text-lg text-[var(--mute)]">
+        New accounts stay inactive until you activate them. Only active users
+        can open games. Admins stay active.
+      </p>
+      <div className="mt-6">
+        <AdminUsersTable
+          currentUserId={session.user.id}
+          initialUsers={users.map((u) => ({
+            ...u,
+            createdAt: u.createdAt.toISOString(),
+          }))}
+        />
       </div>
     </HubShell>
   );

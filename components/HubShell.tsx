@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { auth, signOut } from "@/lib/auth";
-import { GAMES } from "@/games/registry";
 import { canAccessGames, isAdminRole } from "@/lib/roles";
 
 export async function HubShell({
@@ -16,87 +15,78 @@ export async function HubShell({
     role: session?.user?.role,
     active: session?.user?.active,
   });
+  const onLibrary =
+    active === "library" ||
+    (Boolean(active) && active !== "home" && active !== "admin-users");
 
   return (
-    <div className="flex min-h-full">
-      <aside className="flex w-[230px] flex-none flex-col gap-1 border-r border-[var(--line)] bg-[var(--side)] p-3">
-        <div className="mb-4 px-2 text-lg font-extrabold">Game Hub</div>
-        <NavLink href="/" active={active === "home"}>
-          Home
-        </NavLink>
-        {gamesOk && (
-          <NavLink href="/library" active={active === "library"}>
-            Library
-            <em className="ml-auto text-xs text-[var(--mute)] not-italic">
-              {GAMES.length}
-            </em>
-          </NavLink>
-        )}
-        {gamesOk && (
-          <>
-            <div className="mt-4 px-2 text-[11px] tracking-widest text-[var(--mute)]">
-              GAMES
+    <div className="relative min-h-full">
+      <header className="sticky top-0 z-30 px-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <div className="mx-auto flex max-w-[480px] items-center gap-3 rounded-full bg-[var(--card)]/95 px-4 py-2.5 text-[var(--card-ink)] shadow-[0_10px_30px_rgba(22,48,52,0.16)] backdrop-blur">
+          <Link href="/" className="min-w-0 flex-1">
+            <div className="text-xl leading-none font-extrabold tracking-tight">
+              Game Hub
             </div>
-            {GAMES.map((g) => (
-              <NavLink
-                key={g.slug}
-                href={`/games/${g.slug}`}
-                active={active === g.slug}
-              >
-                <span aria-hidden>{g.emoji}</span> {g.title}
-              </NavLink>
-            ))}
-          </>
-        )}
-        {admin && (
-          <>
-            <div className="mt-4 px-2 text-[11px] tracking-widest text-[var(--mute)]">
-              ADMIN
-            </div>
-            <NavLink href="/admin/users" active={active === "admin-users"}>
-              Users
-            </NavLink>
-          </>
-        )}
-        <div className="mt-auto rounded-[10px] border border-[var(--line)] p-3 text-sm">
-          {session?.user ? (
-            <div className="flex flex-col gap-2">
-              <div className="truncate text-[var(--mute)]">
+            {session?.user ? (
+              <div className="mt-1 truncate text-sm text-[var(--card-mute)]">
                 {session.user.email || session.user.name}
+                {!gamesOk ? " · pending" : ""}
               </div>
-              <div className="text-xs capitalize text-[var(--mute)]">
-                {session.user.role}
-                {!gamesOk && " · pending"}
+            ) : (
+              <div className="mt-1 text-sm text-[var(--card-mute)]">
+                Sign in to play
               </div>
-              <form
-                action={async () => {
-                  "use server";
-                  await signOut({ redirectTo: "/login" });
-                }}
+            )}
+          </Link>
+          {session?.user ? (
+            <form
+              action={async () => {
+                "use server";
+                await signOut({ redirectTo: "/login" });
+              }}
+            >
+              <button
+                type="submit"
+                className="h-12 rounded-full bg-[var(--sand)] px-4 text-base font-bold"
               >
-                <button
-                  type="submit"
-                  className="w-full rounded-lg border border-[var(--line)] bg-[var(--field)] px-2 py-1.5 text-left"
-                >
-                  Sign out
-                </button>
-              </form>
-            </div>
+                Sign out
+              </button>
+            </form>
           ) : (
-            <Link href="/login" className="text-[var(--acc)]">
+            <Link
+              href="/login"
+              className="inline-flex h-12 items-center rounded-full bg-[var(--card-ink)] px-4 text-base font-bold text-[var(--ink)]"
+            >
               Sign in
             </Link>
           )}
         </div>
-      </aside>
-      <main className="min-w-0 flex-1 overflow-y-auto bg-[radial-gradient(900px_300px_at_30%_-80px,#2a3a2a55,transparent)]">
-        {children}
-      </main>
+      </header>
+
+      <main className="mx-auto max-w-[1040px] px-4 pt-6 pb-36">{children}</main>
+
+      <nav className="fixed inset-x-0 bottom-0 z-40 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="mx-auto flex max-w-[480px] gap-1 rounded-full bg-[var(--card)]/95 p-1.5 shadow-[0_12px_36px_rgba(22,48,52,0.2)] backdrop-blur">
+          <Tab href="/" active={active === "home"}>
+            Home
+          </Tab>
+          {gamesOk && (
+            <Tab href="/library" active={onLibrary}>
+              Library
+            </Tab>
+          )}
+          {admin && (
+            <Tab href="/admin/users" active={active === "admin-users"}>
+              Users
+            </Tab>
+          )}
+        </div>
+      </nav>
     </div>
   );
 }
 
-function NavLink({
+function Tab({
   href,
   active,
   children,
@@ -108,8 +98,10 @@ function NavLink({
   return (
     <Link
       href={href}
-      className={`flex items-center gap-2 rounded-lg px-2.5 py-2 text-left ${
-        active ? "bg-[var(--field)]" : "hover:bg-[var(--field)]"
+      className={`flex h-14 flex-1 items-center justify-center rounded-full text-base font-bold ${
+        active
+          ? "bg-[var(--card-ink)] text-[var(--ink)]"
+          : "text-[var(--card-mute)]"
       }`}
     >
       {children}
