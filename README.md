@@ -2,6 +2,19 @@
 
 Workshop for TikTok LIVE interactive games. The hub is a Next.js app (accounts, gift bindings, per-user TikFinity hook). Each game lives under `games/` and uses Three.js.
 
+## Documentation
+
+| Doc | Topic |
+| --- | --- |
+| [docs/architecture.md](docs/architecture.md) | Layout, pipeline, constraints |
+| [docs/adding-a-game.md](docs/adding-a-game.md) | New game checklist |
+| [docs/tikfinity.md](docs/tikfinity.md) | Bridge, hooks, SSE |
+| [docs/auth-and-roles.md](docs/auth-and-roles.md) | Google OAuth, admin/user |
+| [AGENTS.md](AGENTS.md) | Agent entry (Next.js + doc index) |
+| [openapi/openapi.yaml](openapi/openapi.yaml) | API contract |
+
+Cursor: project rules in `.cursor/rules/`, skills in `.cursor/skills/`.
+
 ## Stack
 
 - Next.js App Router
@@ -76,6 +89,8 @@ Contract: [`openapi/openapi.yaml`](openapi/openapi.yaml).
 | GET/PUT | `/api/v1/games/{slug}/settings` | Session |
 | GET | `/api/v1/games/{slug}/live` | Session (SSE) |
 | POST | `/api/v1/games/{slug}/test` | Session |
+| GET | `/api/v1/admin/users` | Admin session |
+| PATCH/DELETE | `/api/v1/admin/users/{id}` | Admin session |
 
 ## Add a game
 

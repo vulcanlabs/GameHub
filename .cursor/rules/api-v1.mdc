@@ -1,0 +1,14 @@
+---
+description: API v1 route conventions for Game Hub
+globs: app/api/**/*
+alwaysApply: false
+---
+
+# API v1
+
+- Errors: `{ code, message }` via `lib/errors.ts` `apiError`.
+- Session routes: `requireSession`, `requireActivePlayer`, or `requireAdmin` from `lib/session-guards.ts`.
+- Public hook ingest: `POST /api/v1/hooks/[token]/events` — token auth only; reject inactive non-admins.
+- Keep `openapi/openapi.yaml` aligned with status codes and bodies.
+- Live gifts: publish through `lib/live.ts` (in-memory SSE). Do not invent a second bus.
+- Gift processing helpers: `lib/hooks.ts` (parse, streak skip, fingerprint, bindings).

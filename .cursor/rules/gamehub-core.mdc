@@ -1,0 +1,28 @@
+---
+description: Game Hub core architecture and non-negotiables for all work in this repo
+alwaysApply: true
+---
+
+# Game Hub
+
+Hub = Next.js App Router (`app/`, `lib/`). Games = separate folders under `games/` registered in `games/registry.ts`. Three.js from npm inside game packages.
+
+Read `docs/architecture.md` before large changes. API contract: `openapi/openapi.yaml` — update it when HTTP behavior changes.
+
+## Must
+
+- Keep games out of HTML strings / CDN script tags.
+- Gate game UI and game APIs with active account (or admin) via `canAccessGames` / `requireActivePlayer`.
+- `AUTH_URL` is site origin only (`http://localhost:3000`), never the Google callback path.
+- Prefer extending `lib/gifts.ts` actions + registry over one-off gift hacks.
+- Leave `legacy/` as reference; do not build new features there.
+
+## Must not
+
+- Multi-instance Redis SSE unless explicitly requested.
+- Payments / Discord unlock / packaging `.exe` unless requested.
+- Copy or resell third-party Discord games into this tree.
+
+## Next.js
+
+This Next version may differ from training data. Check `node_modules/next/dist/docs/` and root `AGENTS.md` before using unfamiliar APIs.

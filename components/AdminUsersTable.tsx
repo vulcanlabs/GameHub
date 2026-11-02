@@ -42,6 +42,20 @@ export function AdminUsersTable({
     );
   }
 
+  async function deleteUser(id: string, label: string) {
+    if (!confirm(`Delete ${label}? This cannot be undone.`)) return;
+    setBusyId(id);
+    setError(null);
+    const res = await fetch(`/api/v1/admin/users/${id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({}));
+    setBusyId(null);
+    if (!res.ok) {
+      setError(data.message || "Delete failed");
+      return;
+    }
+    setUsers((list) => list.filter((u) => u.id !== id));
+  }
+
   return (
     <div className="space-y-4">
       {error && (
@@ -57,12 +71,13 @@ export function AdminUsersTable({
               <th className="px-4 py-3 font-medium">Role</th>
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 font-medium">Joined</th>
-              <th className="px-4 py-3 font-medium">Active</th>
+              <th className="px-4 py-3 font-medium">Actions</th>
             </tr>
           </thead>
           <tbody>
             {users.map((u) => {
               const locked = u.role === "admin" || u.id === currentUserId;
+              const canDelete = u.role !== "admin" && u.id !== currentUserId;
               return (
                 <tr key={u.id} className="border-t border-[var(--line)]">
                   <td className="px-4 py-3">
@@ -108,18 +123,30 @@ export function AdminUsersTable({
                     {new Date(u.createdAt).toLocaleDateString()}
                   </td>
                   <td className="px-4 py-3">
-                    <button
-                      type="button"
-                      disabled={locked || busyId === u.id}
-                      onClick={() => void setActive(u.id, !u.active)}
-                      className="rounded-lg border border-[var(--line)] bg-[var(--field)] px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      {busyId === u.id
-                        ? "…"
-                        : u.active
-                          ? "Deactivate"
-                          : "Activate"}
-                    </button>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={locked || busyId === u.id}
+                        onClick={() => void setActive(u.id, !u.active)}
+                        className="rounded-lg border border-[var(--line)] bg-[var(--field)] px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {busyId === u.id
+                          ? "…"
+                          : u.active
+                            ? "Deactivate"
+                            : "Activate"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!canDelete || busyId === u.id}
+                        onClick={() =>
+                          void deleteUser(u.id, u.email || u.name || "user")
+                        }
+                        className="rounded-lg border border-[var(--bad)]/50 bg-[#2a1515] px-3 py-1.5 text-[var(--bad)] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );

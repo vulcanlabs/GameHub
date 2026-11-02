@@ -1,0 +1,14 @@
+---
+description: Conventions for Three.js game packages under games/
+globs: games/**/*
+alwaysApply: false
+---
+
+# Games package rules
+
+- One folder per game: `games/<slug>/`. Slug matches `games/registry.ts`.
+- Client React entry owns the WebGL canvas and game loop. Hub chrome stays off `/play/[slug]`.
+- Import `three` from npm. No cdnjs. No `document.write` of a full document.
+- Subscribe to live gifts via `EventSource('/api/v1/games/<slug>/live')`.
+- Document controls and F-key / gift actions in that game’s `README.md`.
+- When adding a game, follow `docs/adding-a-game.md` and the `add-gamehub-game` skill.
