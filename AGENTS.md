@@ -14,16 +14,19 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 | Doc | When |
 | --- | --- |
-| [docs/architecture.md](docs/architecture.md) | Orientation, boundaries |
-| [docs/adding-a-game.md](docs/adding-a-game.md) | New Three.js game |
+| [docs/install.md](docs/install.md) | Install, first use, go live |
+| [docs/architecture.md](docs/architecture.md) | How the hub, bridge, and games connect |
+| [docs/dont-touch-the-water.md](docs/dont-touch-the-water.md) | Godot course, controls, actions |
+| [docs/adding-a-game.md](docs/adding-a-game.md) | New game checklist |
 | [docs/tikfinity.md](docs/tikfinity.md) | Hooks, bridge, SSE |
-| [docs/auth-and-roles.md](docs/auth-and-roles.md) | Google OAuth, admin/user |
+| [docs/auth-and-roles.md](docs/auth-and-roles.md) | Google OAuth, admin/user, lease |
 | [openapi/openapi.yaml](openapi/openapi.yaml) | HTTP contract |
 | [README.md](README.md) | Run / env |
 
 ## Project skills (`.cursor/skills/`)
 
 - `gamehub-architecture` — map the repo
+- `gamehub-godot` — desktop Godot client, device poll, Don’t Touch the Water
 - `add-gamehub-game` — scaffold a game
 - `gamehub-tikfinity` — gift pipeline
 - `gamehub-auth-roles` — auth and roles

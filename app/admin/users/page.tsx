@@ -19,6 +19,7 @@ export default async function AdminUsersPage() {
       image: true,
       role: true,
       active: true,
+      accessUntil: true,
       createdAt: true,
     },
   });
@@ -30,14 +31,16 @@ export default async function AdminUsersPage() {
         Users
       </h1>
       <p className="mt-3 text-lg text-[var(--mute)]">
-        New accounts stay inactive until you activate them. Only active users
-        can open games. Admins stay active.
+        New accounts stay inactive until you activate them and set an end date.
+        Games stay open only while that date is still ahead. Admins skip the
+        clock.
       </p>
       <div className="mt-6">
         <AdminUsersTable
           currentUserId={session.user.id}
           initialUsers={users.map((u) => ({
             ...u,
+            accessUntil: u.accessUntil?.toISOString() ?? null,
             createdAt: u.createdAt.toISOString(),
           }))}
         />

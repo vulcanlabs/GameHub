@@ -16,6 +16,7 @@ export default async function PlayPage({
     !canAccessGames({
       role: session.user.role,
       active: session.user.active,
+      accessUntil: session.user.accessUntil,
     })
   ) {
     redirect("/");
@@ -24,6 +25,7 @@ export default async function PlayPage({
   const { slug } = await params;
   const game = getGame(slug);
   if (!game) notFound();
+  if (game.runtime === "desktop") redirect(`/games/${slug}`);
 
   const config = await getOrCreateGameConfig(session.user.id, slug);
   if (!config) notFound();

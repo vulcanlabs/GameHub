@@ -11,7 +11,8 @@ import {
 } from "@/lib/game-config";
 import { prisma } from "@/lib/prisma";
 import { hookUrl } from "@/lib/hooks";
-import { canAccessGames } from "@/lib/roles";
+import { accessDenial, canAccessGames } from "@/lib/roles";
+import { toDeviceJson } from "@/lib/devices";
 
 export default async function GamePage({
   params,
@@ -24,9 +25,20 @@ export default async function GamePage({
     !canAccessGames({
       role: session.user.role,
       active: session.user.active,
+      accessUntil: session.user.accessUntil,
     })
   ) {
-    return <PendingAccess />;
+    return (
+      <PendingAccess
+        reason={
+          accessDenial({
+            role: session.user.role,
+            active: session.user.active,
+            accessUntil: session.user.accessUntil,
+          }) ?? "inactive"
+        }
+      />
+    );
   }
 
   const { slug } = await params;
@@ -42,6 +54,14 @@ export default async function GamePage({
   });
   if (!user) redirect("/login");
 
+  const devices =
+    game.runtime === "desktop"
+      ? await prisma.device.findMany({
+          where: { userId: session.user.id, slug, revokedAt: null },
+          orderBy: { createdAt: "desc" },
+        })
+      : [];
+
   return (
     <HubShell active={slug}>
       <GameDashboard
@@ -52,6 +72,7 @@ export default async function GamePage({
           token: user.hookToken,
           url: hookUrl(user.hookToken),
         }}
+        initialDevices={devices.map(toDeviceJson)}
       />
     </HubShell>
   );

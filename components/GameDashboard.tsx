@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { GameMeta } from "@/games/registry";
+import { DesktopLink, type DesktopDevice } from "@/components/DesktopLink";
 import {
   ACTIONS,
   GIFT_CATALOG,
@@ -16,6 +17,7 @@ type Props = {
   initialBindings: Record<string, string>;
   initialSettings: GameSettings;
   initialHook: { token: string; url: string };
+  initialDevices?: DesktopDevice[];
 };
 
 type LogLine = { t: string; text: string };
@@ -25,7 +27,9 @@ export function GameDashboard({
   initialBindings,
   initialSettings,
   initialHook,
+  initialDevices = [],
 }: Props) {
+  const desktop = game.runtime === "desktop";
   const [tab, setTab] = useState<"ov" | "st">("ov");
   const [bindings, setBindings] = useState(initialBindings);
   const [settings, setSettings] = useState(initialSettings);
@@ -200,14 +204,28 @@ export function GameDashboard({
             {game.version} · {Object.keys(bindings).length} gifts · hook ready
           </p>
         </div>
-        <button
-          type="button"
-          onClick={play}
-          className="h-14 flex-none rounded-full bg-[var(--card-ink)] px-8 text-lg font-bold text-[var(--ink)]"
-        >
-          Play
-        </button>
+        {desktop ? (
+          <span className="flex h-14 flex-none items-center rounded-full bg-[var(--card-ink)] px-5 text-sm font-bold text-[var(--ink)]">
+            Desktop
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={play}
+            className="h-14 flex-none rounded-full bg-[var(--card-ink)] px-8 text-lg font-bold text-[var(--ink)]"
+          >
+            Play
+          </button>
+        )}
       </div>
+
+      {desktop && (
+        <DesktopLink
+          slug={game.slug}
+          title={game.title}
+          initialDevices={initialDevices}
+        />
+      )}
 
       <div className="grid max-w-md grid-cols-2 gap-1 rounded-full bg-[var(--card)] p-1.5">
         <button
@@ -243,7 +261,8 @@ export function GameDashboard({
                   Gifts
                 </h2>
                 <p className="mt-1 text-base text-[var(--card-mute)]">
-                  Tap a gift to change it. Test while the game window is open.
+                  Tap a gift to change it. Test while the{" "}
+                  {desktop ? "desktop app is polling" : "game window is open"}.
                 </p>
               </div>
               <button
@@ -331,8 +350,9 @@ export function GameDashboard({
                   1
                 </b>
                 <span>
-                  Press Play. The game opens in its own window. Click inside it
-                  to start.
+                  {desktop
+                    ? `Create a link code and enter it in the ${game.title} app on this PC.`
+                    : "Press Play. The game opens in its own window. Click inside it to start."}
                 </span>
               </li>
               <li className="flex gap-3">

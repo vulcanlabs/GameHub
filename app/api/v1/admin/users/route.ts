@@ -15,6 +15,7 @@ export async function GET() {
       image: true,
       role: true,
       active: true,
+      accessUntil: true,
       createdAt: true,
     },
   });

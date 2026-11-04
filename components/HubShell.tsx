@@ -14,6 +14,7 @@ export async function HubShell({
   const gamesOk = canAccessGames({
     role: session?.user?.role,
     active: session?.user?.active,
+    accessUntil: session?.user?.accessUntil,
   });
   const onLibrary =
     active === "library" ||

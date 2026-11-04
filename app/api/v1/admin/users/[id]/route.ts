@@ -19,10 +19,29 @@ export async function PATCH(
     return apiError(422, "invalid_body", "JSON body required");
   }
 
-  const active = (body as { active?: unknown }).active;
-  if (typeof active !== "boolean") {
-    return apiError(422, "invalid_body", "active boolean required");
+  const raw = body as { active?: unknown; accessUntil?: unknown };
+  const hasActive = typeof raw.active === "boolean";
+  const hasUntil = Object.prototype.hasOwnProperty.call(raw, "accessUntil");
+  if (!hasActive && !hasUntil) {
+    return apiError(422, "invalid_body", "active or accessUntil required");
   }
+
+  let accessUntil: Date | null | undefined;
+  if (hasUntil) {
+    if (raw.accessUntil === null) {
+      accessUntil = null;
+    } else if (typeof raw.accessUntil === "string") {
+      const parsed = new Date(raw.accessUntil);
+      if (Number.isNaN(parsed.getTime())) {
+        return apiError(422, "invalid_body", "accessUntil must be an ISO date");
+      }
+      accessUntil = parsed;
+    } else {
+      return apiError(422, "invalid_body", "accessUntil must be an ISO date or null");
+    }
+  }
+
+  const active = hasActive ? (raw.active as boolean) : undefined;
 
   const target = await prisma.user.findUnique({ where: { id } });
   if (!target) return apiError(404, "not_found", "User not found");
@@ -37,7 +56,10 @@ export async function PATCH(
 
   const user = await prisma.user.update({
     where: { id },
-    data: { active },
+    data: {
+      ...(active === undefined ? {} : { active }),
+      ...(accessUntil === undefined ? {} : { accessUntil }),
+    },
     select: {
       id: true,
       name: true,
@@ -45,11 +67,14 @@ export async function PATCH(
       image: true,
       role: true,
       active: true,
+      accessUntil: true,
       createdAt: true,
     },
   });
 
-  return NextResponse.json({ user });
+  return NextResponse.json({
+    user: { ...user, accessUntil: user.accessUntil?.toISOString() ?? null },
+  });
 }
 
 export async function DELETE(

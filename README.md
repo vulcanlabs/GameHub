@@ -1,12 +1,14 @@
 # Game Hub
 
-Workshop for TikTok LIVE interactive games. The hub is a Next.js app (accounts, gift bindings, per-user TikFinity hook). Each game lives under `games/` and uses Three.js.
+Workshop for TikTok LIVE interactive games. The hub is a Next.js app (accounts, gift bindings, per-user TikFinity hook). Don’t Touch the Water runs as a Godot app and only receives gifts from the hub.
 
 ## Documentation
 
 | Doc | Topic |
 | --- | --- |
-| [docs/architecture.md](docs/architecture.md) | Layout, pipeline, constraints |
+| [docs/install.md](docs/install.md) | Install Godot and the hub, first session |
+| [docs/architecture.md](docs/architecture.md) | How accounts, gifts, and the game connect |
+| [docs/dont-touch-the-water.md](docs/dont-touch-the-water.md) | Controls and gift actions |
 | [docs/adding-a-game.md](docs/adding-a-game.md) | New game checklist |
 | [docs/tikfinity.md](docs/tikfinity.md) | Bridge, hooks, SSE |
 | [docs/auth-and-roles.md](docs/auth-and-roles.md) | Google OAuth, admin/user |
@@ -20,7 +22,7 @@ Cursor: project rules in `.cursor/rules/`, skills in `.cursor/skills/`.
 - Next.js App Router
 - Auth.js (Google)
 - Prisma + SQLite
-- Three.js (`dont-touch-the-water`)
+- Godot 4 (`games/dont-touch-the-water/godot`)
 - Local TikFinity bridge (`bridge/tikfinity-bridge.mjs`)
 
 ## Quick start
@@ -68,13 +70,15 @@ Rotate the token from the dashboard if it leaks.
 ## Roles
 
 - **admin** — `etienne.landman@vulcanlabs.com` (plus any emails in `ADMIN_EMAILS`). Always active. Sidebar → **Users** to activate others.
-- **user** — new Google sign-ups. Start **inactive**; they see home but no games until an admin activates them.
+- **user** — new Google sign-ups. Start **inactive** with no end date. An admin activates them and sets `accessUntil`. Games close when that time passes.
 
 ## Play flow
 
-1. Sign in with Google (admin is active immediately; other users wait for activation).
-2. Open **Don’t Touch the Water**, set gift → action bindings.
-3. Press **Play** (allow pop-ups). Click the game canvas to lock the mouse.
+Full steps: [docs/install.md](docs/install.md).
+
+1. Sign in with Google. An admin sets `accessUntil` for anyone who is not an admin.
+2. Open **Don’t Touch the Water** and create a link code.
+3. Press Play in Godot on `games/dont-touch-the-water/godot`. Enter the hub URL and the code. Click to look.
 4. Use **Test** on a gift, or run the bridge while live.
 
 ## API
@@ -90,13 +94,20 @@ Contract: [`openapi/openapi.yaml`](openapi/openapi.yaml).
 | GET | `/api/v1/games/{slug}/live` | Session (SSE) |
 | POST | `/api/v1/games/{slug}/test` | Session |
 | GET | `/api/v1/admin/users` | Admin session |
-| PATCH/DELETE | `/api/v1/admin/users/{id}` | Admin session |
+| PATCH/DELETE | `/api/v1/admin/users/{id}` | Admin session (`active` and/or `accessUntil`) |
+| POST | `/api/v1/devices/codes` | Session (one-time desktop link code) |
+| POST | `/api/v1/devices/link` | Pair code (returns a device token once) |
+| GET | `/api/v1/devices?slug=` | Session (linked devices) |
+| DELETE | `/api/v1/devices/{id}` | Session (revoke) |
+| GET | `/api/v1/devices/live?slug=` | Device bearer (long-poll) |
+| POST | `/api/v1/devices/state` | Device bearer (status / heartbeat) |
+| GET/PUT | `/api/v1/devices/settings?slug=` | Device bearer (same settings as the hub) |
 
 ## Add a game
 
-1. Create `games/<slug>/` with a playable React entry.
-2. Register it in [`games/registry.ts`](games/registry.ts).
-3. Wire `/play/[slug]` to load it.
+1. Create `games/<slug>/`. Web games use a React entry. Desktop games are a Godot 4 project.
+2. Register it in [`games/registry.ts`](games/registry.ts) with `runtime: "web"` or `"desktop"`.
+3. Wire `/play/[slug]` only for web games. Desktop games link from the hub.
 
 ## Scripts
 

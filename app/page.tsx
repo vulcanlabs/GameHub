@@ -3,14 +3,17 @@ import { HubShell } from "@/components/HubShell";
 import { GameRow } from "@/components/GameRow";
 import { GAMES } from "@/games/registry";
 import { auth } from "@/lib/auth";
-import { canAccessGames } from "@/lib/roles";
+import { accessDenial, canAccessGames } from "@/lib/roles";
 
 export default async function HomePage() {
   const session = await auth();
-  const gamesOk = canAccessGames({
+  const access = {
     role: session?.user?.role,
     active: session?.user?.active,
-  });
+    accessUntil: session?.user?.accessUntil,
+  };
+  const gamesOk = canAccessGames(access);
+  const denial = accessDenial(access);
 
   return (
     <HubShell active="home">
@@ -25,10 +28,13 @@ export default async function HomePage() {
 
       {session?.user && !gamesOk && (
         <div className="mt-6 rounded-[28px] bg-[var(--card)] p-5 text-[var(--card-ink)]">
-          <b className="text-xl text-[var(--bad)]">Account pending</b>
+          <b className="text-xl text-[var(--bad)]">
+            {denial === "expired" ? "Access ended" : "Account pending"}
+          </b>
           <p className="mt-2 text-lg text-[var(--card-mute)]">
-            You are signed in. An admin must activate your account before games
-            unlock.
+            {denial === "expired"
+              ? "You are signed in. An admin must set a new end date before games unlock."
+              : "You are signed in. An admin must activate your account and set an end date before games unlock."}
           </p>
         </div>
       )}

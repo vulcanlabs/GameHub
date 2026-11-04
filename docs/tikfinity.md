@@ -20,7 +20,7 @@ node bridge/tikfinity-bridge.mjs --url 'http://localhost:3000/api/v1/hooks/TOKEN
 
 Options: `--ws` (default `ws://127.0.0.1:21213/`), `--slug` (default `dont-touch-the-water`).
 
-The bridge reconnects on close and forwards `event === "gift"` only.
+The bridge reconnects on close and forwards `event === "gift"` only. Don’t Touch the Water is a Godot app. It does not replace the bridge. It long-polls the hub after the hook has already mapped the gift.
 
 ## Server behavior
 

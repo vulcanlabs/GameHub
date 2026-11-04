@@ -41,6 +41,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "403":
+          description: Account inactive or access period ended
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "422":
           description: Invalid body
           content:
@@ -235,12 +241,277 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/devices/codes:
+    post:
+      operationId: createDeviceCode
+      summary: Mint a one-time code that a desktop game exchanges for a device token
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [slug]
+              properties:
+                slug:
+                  type: string
+      responses:
+        "200":
+          description: Pair code
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PairCode"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Account inactive or access period ended
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/devices/link:
+    post:
+      operationId: linkDevice
+      summary: Exchange a pair code for a device token. The raw token is returned once.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, slug, deviceName]
+              properties:
+                code:
+                  type: string
+                slug:
+                  type: string
+                deviceName:
+                  type: string
+                  maxLength: 40
+      responses:
+        "200":
+          description: Device token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceLink"
+        "401":
+          description: Pair code invalid or expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Account inactive or access period ended
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/devices:
+    get:
+      operationId: listDevices
+      summary: Linked desktop clients for one game
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: slug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Devices
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/devices/{id}:
+    delete:
+      operationId: revokeDevice
+      summary: Revoke a desktop client. Later polls with its token fail.
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [revoked, id]
+                properties:
+                  revoked:
+                    type: boolean
+                  id:
+                    type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/devices/live:
+    get:
+      operationId: pollDeviceLive
+      summary: Long-poll the next gift actions for a linked desktop game
+      security:
+        - deviceToken: []
+      parameters:
+        - name: slug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Events queued during this hold, or an empty list after about 25s
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LivePoll"
+        "401":
+          description: Missing or revoked device token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Lease ended, account inactive, or token slug mismatch
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/devices/state:
+    post:
+      operationId: postDeviceState
+      summary: Heartbeat and optional status from the desktop game. Not a gift.
+      security:
+        - deviceToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceState"
+      responses:
+        "200":
+          description: Stored
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, lastSeenAt]
+                properties:
+                  ok:
+                    type: boolean
+                  lastSeenAt:
+                    type: string
+                    format: date-time
+        "401":
+          description: Missing or revoked device token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Lease ended or account inactive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+
+  /api/v1/devices/settings:
+    get:
+      operationId: getDeviceSettings
+      summary: Game settings for the linked desktop client
+      security:
+        - deviceToken: []
+      parameters:
+        - name: slug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Settings saved for this user and game
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettingsResponse"
+        "401":
+          description: Missing or revoked device token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Lease ended or account inactive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      operationId: putDeviceSettings
+      summary: Save pause-menu settings from the desktop game
+      security:
+        - deviceToken: []
+      parameters:
+        - name: slug
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GameSettings"
+      responses:
+        "200":
+          description: Stored settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettingsResponse"
+        "401":
+          description: Missing or revoked device token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+
 components:
   securitySchemes:
     sessionCookie:
       type: apiKey
       in: cookie
       name: authjs.session-token
+    deviceToken:
+      type: http
+      scheme: bearer
   parameters:
     slug:
       name: slug
@@ -386,3 +657,91 @@ components:
           type: string
         settings:
           $ref: "#/components/schemas/GameSettings"
+    PairCode:
+      type: object
+      required: [code, slug, expiresAt]
+      properties:
+        code:
+          type: string
+        slug:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+    DeviceLink:
+      type: object
+      required: [token, deviceId, slug]
+      properties:
+        token:
+          type: string
+          description: Returned once. Store it in the desktop app.
+        deviceId:
+          type: string
+        slug:
+          type: string
+    Device:
+      type: object
+      required: [id, name, slug, createdAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        lastStatus:
+          type: string
+          nullable: true
+        lastScore:
+          type: number
+          nullable: true
+        lastSeenAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    DeviceList:
+      type: object
+      required: [devices]
+      properties:
+        devices:
+          type: array
+          items:
+            $ref: "#/components/schemas/Device"
+    LivePoll:
+      type: object
+      required: [events]
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/LiveAction"
+    LiveAction:
+      type: object
+      required: [type, slug, giftName, action, repeatCount]
+      properties:
+        type:
+          type: string
+          const: action
+        slug:
+          type: string
+        giftName:
+          type: string
+        action:
+          type: string
+        repeatCount:
+          type: integer
+        label:
+          type: string
+    DeviceState:
+      type: object
+      properties:
+        slug:
+          type: string
+        status:
+          type: string
+          enum: [ready, paused]
+        score:
+          type: number

@@ -22,7 +22,7 @@ Authorized JavaScript origin: `http://localhost:3000`.
 | Role | Who | Active |
 | --- | --- | --- |
 | `admin` | `etienne.landman@vulcanlabs.com` + `ADMIN_EMAILS` | Always (forced in session) |
-| `user` | Everyone else | Default `false` until admin activates |
+| `user` | Everyone else | Default `false` until admin activates, and `accessUntil` must be in the future |
 
 Logic lives in `lib/roles.ts`. Session enrichment in `lib/auth.ts`. Route guards in `lib/session-guards.ts`.
 
@@ -30,7 +30,7 @@ On `createUser`: set `hookToken`, `role`, `active` (admin → active true). On `
 
 ## Admin users UI
 
-`/admin/users` — list, activate/deactivate, delete.
+`/admin/users` — list, activate/deactivate, set `accessUntil` (+1 day, +7 days, +30 days, or a calendar date), cancel that date, delete.
 
 - Cannot deactivate or delete admins.
 - Cannot deactivate or delete yourself.
@@ -39,6 +39,6 @@ API: `GET /api/v1/admin/users`, `PATCH|DELETE /api/v1/admin/users/{id}`.
 
 ## Gating
 
-`canAccessGames({ role, active })` — admins always pass.
+`canAccessGames({ role, active, accessUntil })` — admins always pass. Other users need `active` and a future `accessUntil`.
 
-Used by hub nav, home/library/game/play pages, and game/hook session APIs via `requireActivePlayer()`.
+Used by hub nav, home/library/game/play pages, hook ingest, device polls, and game APIs via `requireActivePlayer()`. Expired access returns `403` with code `expired`. Inactive accounts return `403` with code `inactive`.

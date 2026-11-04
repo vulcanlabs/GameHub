@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { apiError } from "@/lib/errors";
 import { parseGiftBody, processGiftForUser } from "@/lib/hooks";
 import { asBindings, getOrCreateGameConfig } from "@/lib/game-config";
+import { accessDenial, accessError } from "@/lib/roles";
 
 const DEFAULT_SLUG = "dont-touch-the-water";
 
@@ -15,8 +16,14 @@ export async function POST(
   if (!user) {
     return apiError(401, "unauthorized", "Unknown hook token");
   }
-  if (user.role !== "admin" && !user.active) {
-    return apiError(403, "inactive", "Account is not active");
+  const denial = accessDenial({
+    role: user.role,
+    active: user.active,
+    accessUntil: user.accessUntil,
+  });
+  if (denial) {
+    const err = accessError(denial);
+    return apiError(403, err.code, err.message);
   }
 
   let body: unknown;

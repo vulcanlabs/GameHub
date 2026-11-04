@@ -1,6 +1,6 @@
 import { auth } from "./auth";
 import { apiError } from "./errors";
-import { canAccessGames, isAdminRole } from "./roles";
+import { accessDenial, accessError, isAdminRole } from "./roles";
 
 export async function requireSession() {
   const session = await auth();
@@ -24,19 +24,14 @@ export async function requireAdmin() {
 export async function requireActivePlayer() {
   const result = await requireSession();
   if ("error" in result) return result;
-  if (
-    !canAccessGames({
-      role: result.session.user.role,
-      active: result.session.user.active,
-    })
-  ) {
-    return {
-      error: apiError(
-        403,
-        "inactive",
-        "Account is not active. Wait for an admin to activate you.",
-      ),
-    } as const;
+  const denial = accessDenial({
+    role: result.session.user.role,
+    active: result.session.user.active,
+    accessUntil: result.session.user.accessUntil,
+  });
+  if (denial) {
+    const err = accessError(denial);
+    return { error: apiError(403, err.code, err.message) } as const;
   }
   return result;
 }

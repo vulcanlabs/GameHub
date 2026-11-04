@@ -5,6 +5,10 @@ function isPublic(pathname: string): boolean {
   if (pathname === "/login" || pathname.startsWith("/login/")) return true;
   if (pathname.startsWith("/api/auth")) return true;
   if (/^\/api\/v1\/hooks\/[^/]+\/events\/?$/.test(pathname)) return true;
+  if (pathname === "/api/v1/devices/link") return true;
+  if (pathname === "/api/v1/devices/live") return true;
+  if (pathname === "/api/v1/devices/state") return true;
+  if (pathname === "/api/v1/devices/settings") return true;
   if (pathname.startsWith("/_next")) return true;
   if (pathname === "/favicon.ico") return true;
   return false;

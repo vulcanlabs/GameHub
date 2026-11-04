@@ -28,7 +28,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = user.id;
         const dbUser = await prisma.user.findUnique({
           where: { id: user.id },
-          select: { role: true, active: true, email: true },
+          select: { role: true, active: true, email: true, accessUntil: true },
         });
         const role =
           dbUser?.role === "admin" || isAdminEmail(dbUser?.email ?? user.email)
@@ -36,6 +36,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             : "user";
         session.user.role = role;
         session.user.active = role === "admin" ? true : Boolean(dbUser?.active);
+        session.user.accessUntil = dbUser?.accessUntil?.toISOString() ?? null;
       }
       return session;
     },

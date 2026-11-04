@@ -4,7 +4,7 @@ import { GameRow } from "@/components/GameRow";
 import { PendingAccess } from "@/components/PendingAccess";
 import { GAMES } from "@/games/registry";
 import { auth } from "@/lib/auth";
-import { canAccessGames } from "@/lib/roles";
+import { accessDenial, canAccessGames } from "@/lib/roles";
 
 export default async function LibraryPage() {
   const session = await auth();
@@ -13,9 +13,20 @@ export default async function LibraryPage() {
     !canAccessGames({
       role: session.user.role,
       active: session.user.active,
+      accessUntil: session.user.accessUntil,
     })
   ) {
-    return <PendingAccess />;
+    return (
+      <PendingAccess
+        reason={
+          accessDenial({
+            role: session.user.role,
+            active: session.user.active,
+            accessUntil: session.user.accessUntil,
+          }) ?? "inactive"
+        }
+      />
+    );
   }
 
   return (

@@ -6,11 +6,13 @@ declare module "next-auth" {
       id: string;
       role: "admin" | "user";
       active: boolean;
+      accessUntil: string | null;
     } & DefaultSession["user"];
   }
 
   interface User {
     role?: "admin" | "user";
     active?: boolean;
+    accessUntil?: string | null;
   }
 }
