@@ -6,7 +6,7 @@ The window asks for the hub origin, a one-time code from the Don’t Touch the W
 
 Install, first live session, and the TikFinity bridge: [docs/install.md](../../../docs/install.md).
 
-Controls, checkpoints, monsters, and F-keys: [docs/dont-touch-the-water.md](../../../docs/dont-touch-the-water.md).
+Controls, levels, monsters, and F-keys: [docs/dont-touch-the-water.md](../../../docs/dont-touch-the-water.md).
 
 Headless smoke check from the repo root:
 

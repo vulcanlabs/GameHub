@@ -7,30 +7,30 @@ export const ACTIONS: Record<string, { label: string; description: string }> = {
     label: "CROW ATTACK",
     description: "A crow swoops down and knocks the player backwards.",
   },
-  up_1: {
-    label: "UP 1 CHECKPOINT",
-    description: "Moves the player forward one checkpoint.",
-  },
-  down_1: {
-    label: "DOWN 1 CHECKPOINT",
-    description: "Sends the player back one checkpoint.",
-  },
-  up_5: {
-    label: "UP 5 CHECKPOINTS",
-    description: "Moves the player forward five checkpoints.",
-  },
-  down_5: {
-    label: "DOWN 5 CHECKPOINTS",
-    description: "Sends the player back five checkpoints.",
-  },
-  custom: {
-    label: "CUSTOM CHECKPOINT",
-    description: "Moves by the amount set in Settings (negative goes back).",
-  },
-  reset: {
-    label: "RESET",
-    description: "Sends the player back to the start.",
-  },
+    up_1: {
+      label: "UP 1 LEVEL",
+      description: "Moves the player forward one level.",
+    },
+    down_1: {
+      label: "DOWN 1 LEVEL",
+      description: "Sends the player back one level.",
+    },
+    up_5: {
+      label: "UP 5 LEVELS",
+      description: "Moves the player forward five levels.",
+    },
+    down_5: {
+      label: "DOWN 5 LEVELS",
+      description: "Sends the player back five levels.",
+    },
+    custom: {
+      label: "CUSTOM LEVEL",
+      description: "Moves by the amount set in Settings (negative goes back).",
+    },
+    reset: {
+      label: "RESET",
+      description: "Restarts the current level.",
+    },
   push_forward: {
     label: "PUSH FORWARD",
     description: "Shoves the player forward.",

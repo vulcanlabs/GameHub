@@ -1,6 +1,8 @@
 extends Node
 
 const GameScript = preload("res://scripts/game.gd")
+# Set false when linking should show again.
+const SKIP_LINK := true
 
 var hub: Node
 var game: Node3D
@@ -23,7 +25,7 @@ func _ready() -> void:
 	hub.actions_received.connect(_on_actions)
 	hub.session_ended.connect(_on_ended)
 	hub.poll_note.connect(_set_message)
-	if "--playtest" in OS.get_cmdline_user_args():
+	if "--playtest" in OS.get_cmdline_user_args() or SKIP_LINK:
 		_set_link_visible(false)
 		_on_settings({"monster": "stalker", "diff": 1, "fov": 90, "push": 12, "custom": 3})
 		return

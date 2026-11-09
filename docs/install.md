@@ -67,7 +67,7 @@ The game remembers the hub URL only. Each launch asks for a new link code. Creat
 2. Map a few gifts, or leave the defaults (Rose pushes back, TikTok pushes forward, and so on).
 3. Create a link code and enter it in the Godot window.
 4. Click **Click to look**. WASD moves, Shift sprints, Space jumps, Esc pauses.
-5. Press **Test** on a gift in the hub. The Godot window should move, spawn, or jump checkpoints.
+5. Press **Test** on a gift in the hub. The Godot window should move, spawn, or change level.
 6. Esc opens pause. Monster, difficulty, field of view, push strength, and the custom checkpoint step save back to the same settings as the hub.
 
 Difficulty rebuilds the course. The Three.js files under `games/dont-touch-the-water/` are the previous browser build. The hub no longer opens them. They stay until that folder is removed.

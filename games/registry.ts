@@ -17,7 +17,7 @@ export const GAMES: GameMeta[] = [
     emoji: "🌊",
     genre: "Arcade",
     blurb:
-      "Godot on the stream PC. Stay on the platforms. LIVE gifts shove you, spawn monsters, and move checkpoints.",
+      "Godot on the stream PC. Stay on the platforms. LIVE gifts shove you, spawn monsters, and change levels.",
     version: "v1.0.0",
     runtime: "desktop",
   },

@@ -6,9 +6,9 @@ const BirdScript = preload("res://scripts/bird.gd")
 
 const SPEED := {
 	"land": 6.5,
-	"landSprint": 10.0,
+	"landSprint": 13.0,
 	"water": 3.5,
-	"waterSprint": 5.5,
+	"waterSprint": 8.0,
 }
 
 var settings := {
@@ -29,14 +29,15 @@ var pitch := 0.0
 var on_ground := false
 var in_water := false
 var plat: Dictionary = {}
-var cp := 0
+var level := 0
+var pending_level := -1
 var dead := 0.0
 var time := 0.0
 var playing := false
 
 var course: Node3D
 var plats: Array = []
-var cps: Array = []
+var hazards: Array = []
 var monsters: Array = []
 var birds: Array = []
 var splashes: Array = []
@@ -56,6 +57,12 @@ var fov_slider: HSlider
 var push_slider: HSlider
 var custom_spin: SpinBox
 var logs: Array[String] = []
+var blood := 0.0
+var blood_rect: ColorRect
+var splats: Array[Polygon2D] = []
+var killer: Node3D
+var spin_lock := 0.0
+var space_held := false
 
 
 func start(next_settings: Dictionary, hub_node: Node, is_playtest := false) -> void:
@@ -80,28 +87,34 @@ func start(next_settings: Dictionary, hub_node: Node, is_playtest := false) -> v
 func _lights() -> void:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color("6a5a30")
+	env.background_color = Color("6a7058")
 	env.fog_enabled = true
 	env.fog_mode = Environment.FOG_MODE_EXPONENTIAL
-	env.fog_density = 0.022
-	env.fog_light_color = env.background_color
+	env.fog_density = 0.02
+	env.fog_light_color = Color("7c8460")
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color("6d7358")
+	env.ambient_light_energy = 0.42
+	env.glow_enabled = true
+	env.glow_intensity = 0.45
+	env.glow_bloom = 0.08
 	world_env = WorldEnvironment.new()
 	world_env.environment = env
 	add_child(world_env)
 	var sun := DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-50, 30, 0)
-	sun.light_energy = 0.7
+	sun.rotation_degrees = Vector3(-70, 20, 0)
+	sun.light_color = Color("c5c99a")
+	sun.light_energy = 0.22
 	add_child(sun)
-	var amb := DirectionalLight3D.new()
-	amb.light_energy = 0.35
-	amb.rotation_degrees = Vector3(80, 0, 0)
-	add_child(amb)
 
 
 func _water() -> void:
-	water = _plane(Vector2(120, 120), Color(0.08, 0.35, 0.42, 0.82), 0.02)
-	bed = _plane(Vector2(120, 120), Color("0c2428"), -4.0)
-	ceiling = _plane(Vector2(160, 160), Color("2a2418"), 15.0)
+	water = _plane(Vector2(160, 160), Color(0.05, 0.16, 0.14, 0.9), 0.02)
+	water.material_override = _water_shader()
+	bed = _plane(Vector2(160, 160), Color("071412"), -4.0)
+	ceiling = _plane(Vector2(180, 180), Color("8a8268"), 4.55)
+	ceiling.material_override = _ceiling_shader()
+	_hang_lights(ceiling)
 	cam = Camera3D.new()
 	cam.fov = float(settings.fov)
 	add_child(cam)
@@ -123,6 +136,48 @@ func _plane(size: Vector2, color: Color, y: float) -> MeshInstance3D:
 	return mesh
 
 
+func _water_shader() -> ShaderMaterial:
+	var shader := Shader.new()
+	shader.code = "shader_type spatial;\nrender_mode blend_mix, depth_draw_opaque, cull_disabled;\nvoid vertex() {\n\tVERTEX.y += sin(VERTEX.x * 0.35 + TIME * 0.7) * 0.05;\n\tVERTEX.y += cos(VERTEX.z * 0.28 + TIME * 0.55) * 0.04;\n}\nvoid fragment() {\n\tfloat ripple = sin(UV.x * 90.0 + TIME * 0.8) * sin(UV.y * 70.0 - TIME * 0.6);\n\tvec3 deep = vec3(0.04, 0.13, 0.12);\n\tvec3 chem = vec3(0.16, 0.32, 0.24);\n\tALBEDO = mix(deep, chem, 0.22 + ripple * 0.08);\n\tALPHA = 0.9;\n\tROUGHNESS = 0.12;\n\tMETALLIC = 0.08;\n}\n"
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	return mat
+
+
+func _ceiling_shader() -> ShaderMaterial:
+	var shader := Shader.new()
+	shader.code = "shader_type spatial;\nvoid fragment() {\n\tvec2 uv = UV * 28.0;\n\tvec2 g = abs(fract(uv) - 0.5);\n\tfloat seam = step(0.47, max(g.x, g.y));\n\tvec3 tile = vec3(0.55, 0.52, 0.38);\n\ttile *= 0.92 + 0.08 * sin(UV.x * 40.0);\n\tALBEDO = mix(tile, tile * 0.5, seam);\n\tROUGHNESS = 0.9;\n}\n"
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	return mat
+
+
+func _hang_lights(parent: Node3D) -> void:
+	var tube_mat := StandardMaterial3D.new()
+	tube_mat.albedo_color = Color("e4e7b0")
+	tube_mat.emission_enabled = true
+	tube_mat.emission = Color("d5dead")
+	tube_mat.emission_energy_multiplier = 1.6
+	tube_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	for ix in range(-3, 4):
+		for iz in range(-3, 4):
+			if (ix + iz) % 2 != 0:
+				continue
+			var lamp := MeshInstance3D.new()
+			var box := BoxMesh.new()
+			box.size = Vector3(2.6, 0.06, 0.28)
+			lamp.mesh = box
+			lamp.material_override = tube_mat
+			lamp.position = Vector3(ix * 10.0, -0.16, iz * 10.0)
+			parent.add_child(lamp)
+			var glow := OmniLight3D.new()
+			glow.light_color = Color("dfe6b4")
+			glow.light_energy = 0.7
+			glow.omni_range = 11.0
+			glow.position = lamp.position
+			parent.add_child(glow)
+
+
 func _hud() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
@@ -135,6 +190,29 @@ func _hud() -> void:
 	log_label.position = Vector2(24, 620)
 	log_label.add_theme_color_override("font_color", Color("f6c1b4"))
 	layer.add_child(log_label)
+	var blood_layer := CanvasLayer.new()
+	blood_layer.layer = 20
+	add_child(blood_layer)
+	blood_rect = ColorRect.new()
+	blood_rect.color = Color(0.55, 0.0, 0.02, 0.0)
+	blood_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	blood_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	blood_rect.visible = false
+	blood_layer.add_child(blood_rect)
+	for i in 24:
+		var poly := Polygon2D.new()
+		var pts := PackedVector2Array()
+		var n := 6 + (i % 4)
+		var rad := 50.0 + float(i % 5) * 28.0
+		for k in n:
+			var a := TAU * float(k) / float(n)
+			var r := rad * (0.35 if k % 2 == 0 else 1.0)
+			pts.append(Vector2(cos(a), sin(a)) * r)
+		poly.polygon = pts
+		poly.color = Color(0.45 + float(i % 3) * 0.12, 0.0, 0.02, 0.94)
+		poly.visible = false
+		blood_layer.add_child(poly)
+		splats.append(poly)
 
 
 func _pause_ui() -> void:
@@ -263,14 +341,21 @@ func _read_pause() -> void:
 func build_course(reset_player: bool) -> void:
 	if course:
 		course.queue_free()
-	var built: Dictionary = MapGen.build(self, int(settings.diff))
+	var built: Dictionary = MapGen.build(self, int(settings.diff), level)
 	course = built.root
 	plats = built.plats
-	cps = built.cps
+	hazards = built.hazards
 	_clear_monsters()
 	_spawn_monster()
 	if reset_player:
-		respawn(0)
+		_place_start()
+
+
+func go_level(index: int) -> void:
+	level = clampi(index, 0, MapGen.LEVEL_COUNT - 1)
+	pending_level = -1
+	build_course(true)
+	_log("Level %d" % (level + 1))
 
 
 func _clear_monsters() -> void:
@@ -297,22 +382,24 @@ func _add_bird(bat: bool, attack_from: Vector3 = Vector3.INF) -> void:
 	birds.append(bird)
 
 
-func respawn(index: int) -> void:
-	if cps.is_empty():
+func _place_start() -> void:
+	if plats.is_empty():
 		return
-	cp = clampi(index, 0, cps.size() - 1)
-	var p: Dictionary = plats[int(cps[cp])]
+	var p: Dictionary = plats[0]
 	pos = Vector3(float(p.x), float(p.top) + 0.01, float(p.z))
 	vel = Vector3.ZERO
 	kb = Vector3.ZERO
 	yaw = 0.0
+	pitch = 0.0
 	in_water = false
 	on_ground = true
 	plat = p
+	killer = null
 	for m in monsters:
 		if is_instance_valid(m):
 			m.place_far(pos)
-	_log("Checkpoint %d" % cp)
+	for poly in splats:
+		poly.visible = false
 
 
 func run_action(action: String) -> void:
@@ -326,17 +413,17 @@ func run_action(action: String) -> void:
 			_add_bird(false, pos + Vector3(forward.x, 0, forward.y) * 14.0 + Vector3(0, 7, 0))
 			_log("Crow attack")
 		"up_1":
-			respawn(cp + 1)
+			go_level(level + 1)
 		"down_1":
-			respawn(cp - 1)
+			go_level(level - 1)
 		"up_5":
-			respawn(cp + 5)
+			go_level(level + 5)
 		"down_5":
-			respawn(cp - 5)
+			go_level(level - 5)
 		"custom":
-			respawn(cp + int(settings.custom))
+			go_level(level + int(settings.custom))
 		"reset":
-			respawn(0)
+			go_level(level)
 		"push_forward":
 			kb.x += forward.x * push * 1.2
 			kb.z += forward.y * push * 1.2
@@ -423,6 +510,7 @@ func _process(delta: float) -> void:
 	var dt := minf(delta, 0.05)
 	time += dt
 	if playtest:
+		_step_hazards(dt)
 		_move(dt, true, 1.0, 0.0)
 		if time > 0.4 and plats.size() > 10 and monsters.size() > 0:
 			print("playtest ok plats=%d monsters=%d" % [plats.size(), monsters.size()])
@@ -431,19 +519,30 @@ func _process(delta: float) -> void:
 	if dead > 0.0:
 		dead -= dt
 		if dead <= 0.0:
-			respawn(cp)
+			_place_start()
 	elif Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not pause_layer.visible:
 		var forward := float(Input.is_key_pressed(KEY_W)) - float(Input.is_key_pressed(KEY_S))
 		var strafe := float(Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_A))
-		_move(dt, Input.is_key_pressed(KEY_SHIFT), forward, strafe)
-		if Input.is_key_pressed(KEY_SPACE) and on_ground and not in_water:
+		var space_now := Input.is_key_pressed(KEY_SPACE)
+		var sprinting := Input.is_key_pressed(KEY_SHIFT) or Input.is_physical_key_pressed(KEY_SHIFT)
+		if space_now and not space_held and in_water:
+			var face := _forward()
+			kb.x += face.x * 4.0
+			kb.z += face.y * 4.0
+		_step_hazards(dt)
+		_move(dt, sprinting, forward, strafe)
+		if space_now and not space_held and on_ground and not in_water and spin_lock <= 0.0:
 			vel.y = 8.0
-		if Input.is_key_pressed(KEY_SPACE) and in_water:
-			_try_climb()
+	else:
+		_step_hazards(dt)
+	if pending_level >= 0 and dead <= 0.0:
+		go_level(pending_level)
 	_step_actors(dt)
 	_step_splashes(dt)
+	_step_blood(dt)
 	_place_camera()
 	_refresh_hud()
+	space_held = Input.is_key_pressed(KEY_SPACE)
 
 
 func _move(dt: float, sprint: bool, forward_axis: float, strafe_axis: float) -> void:
@@ -467,11 +566,7 @@ func _move(dt: float, sprint: bool, forward_axis: float, strafe_axis: float) -> 
 		vel.y = 0.0
 		pos.x += vel.x * dt
 		pos.z += vel.z * dt
-		if forward_axis != 0.0 or strafe_axis != 0.0:
-			for p in plats:
-				if Vector2(pos.x - float(p.x), pos.z - float(p.z)).length() < float(p.h) + 0.55:
-					_try_climb()
-					break
+		_stand_if_over_pad()
 	else:
 		vel.y -= 22.0 * dt
 		pos += vel * dt
@@ -498,11 +593,7 @@ func _collide(prev_y: float) -> void:
 				vel.y = 0.0
 				on_ground = true
 				plat = p
-				if int(p.cpi) > cp:
-					cp = int(p.cpi)
-					_log("Checkpoint %d reached" % cp)
-					if cp == cps.size() - 1:
-						_log("Finish reached")
+				_note_goal(p)
 			elif pos.y < float(p.top) - 0.05:
 				var ox := lim - absf(dx)
 				var oz := lim - absf(dz)
@@ -512,24 +603,82 @@ func _collide(prev_y: float) -> void:
 					pos.z += (-1.0 if dz < 0.0 else 1.0) * oz
 
 
-func _try_climb() -> bool:
-	var best: Dictionary = {}
-	var best_d := 9999.0
+func _stand_if_over_pad() -> void:
 	for p in plats:
-		var d := Vector2(pos.x - float(p.x), pos.z - float(p.z)).length()
-		if d < float(p.h) + 1.4 and d < best_d:
-			best = p
-			best_d = d
-	if best.is_empty():
-		return false
-	pos = Vector3(float(best.x), float(best.top) + 0.05, float(best.z))
-	vel = Vector3.ZERO
-	kb = Vector3.ZERO
-	in_water = false
-	on_ground = true
-	plat = best
-	_log("Climbed back onto a platform")
-	return true
+		var dx := pos.x - float(p.x)
+		var dz := pos.z - float(p.z)
+		if absf(dx) <= float(p.h) - 0.05 and absf(dz) <= float(p.h) - 0.05:
+			pos.y = float(p.top)
+			vel.y = 0.0
+			on_ground = true
+			plat = p
+			_note_goal(p)
+			return
+
+
+func _note_goal(p: Dictionary) -> void:
+	if not bool(p.get("goal", false)) or pending_level >= 0:
+		return
+	if level + 1 >= MapGen.LEVEL_COUNT:
+		p["goal"] = false
+		_log("All levels clear")
+		return
+	pending_level = level + 1
+
+
+func _step_hazards(dt: float) -> void:
+	spin_lock = maxf(0.0, spin_lock - dt)
+	for p in plats:
+		var phase := float(p.phase)
+		var wave := sin(time * 0.65 + phase)
+		var slide := sin(time * float(p.slide_speed) + phase) * float(p.slide_amp)
+		var drift := wave * 0.32
+		p.x = float(p.ox) + float(p.axis_x) * (slide + drift)
+		p.z = float(p.oz) + float(p.axis_z) * (slide + drift)
+		p.top = float(p.top0) + sin(time * 0.85 + phase * 1.7) * 0.06
+		var mesh: MeshInstance3D = p.mesh
+		if is_instance_valid(mesh):
+			mesh.position = Vector3(float(p.x), float(p.top) - 2.5, float(p.z))
+	if on_ground and not plat.is_empty():
+		pos.y = float(plat.top)
+	if dead > 0.0:
+		for h in hazards:
+			var idle: Node3D = h.node
+			if is_instance_valid(idle):
+				idle.rotation.y += dt * float(h.speed)
+		return
+	if spin_lock > 0.0:
+		for h in hazards:
+			var spinning: Node3D = h.node
+			if is_instance_valid(spinning):
+				spinning.rotation.y += dt * float(h.speed)
+		return
+	for h in hazards:
+		var node: Node3D = h.node
+		if not is_instance_valid(node):
+			continue
+		node.rotation.y += dt * float(h.speed)
+		var dx := pos.x - node.position.x
+		var dz := pos.z - node.position.z
+		var dist := Vector2(dx, dz).length()
+		var bar_y := node.position.y
+		if dist >= float(h.reach) or pos.y > bar_y + 0.45 or pos.y < bar_y - 0.85:
+			continue
+		var ang := atan2(dz, dx)
+		var arm := wrapf(ang - node.rotation.y, -PI, PI)
+		var arm_back := wrapf(ang - node.rotation.y + PI, -PI, PI)
+		if dist > 0.55 and absf(arm) > 0.4 and absf(arm_back) > 0.4:
+			continue
+		if dist > 0.2:
+			kb.x += (dx / dist) * 5.0
+			kb.z += (dz / dist) * 5.0
+		if vel.y > 1.0:
+			vel.y = 1.0
+		on_ground = false
+		plat = {}
+		spin_lock = 0.55
+		_log("Spinner hit")
+		break
 
 
 func _splash() -> void:
@@ -556,8 +705,49 @@ func _splash() -> void:
 func _scare() -> void:
 	if dead > 0.0:
 		return
-	dead = 1.4
+	dead = 2.4
+	_hurt_flash()
+	_show_splatter()
+	var nearest: Node3D = null
+	var best := 9999.0
+	for m in monsters:
+		if not is_instance_valid(m):
+			continue
+		var d := Vector2(m.position.x - pos.x, m.position.z - pos.z).length()
+		if d < best:
+			best = d
+			nearest = m
+	if nearest:
+		nearest.loom(pos, _forward())
+		killer = nearest
 	_log("The monster caught you")
+
+
+func _hurt_flash() -> void:
+	blood = 1.0
+
+
+func _show_splatter() -> void:
+	for poly in splats:
+		poly.visible = true
+		poly.position = Vector2(randf_range(-80.0, 1360.0), randf_range(-80.0, 800.0))
+		poly.rotation = randf() * TAU
+		poly.scale = Vector2(randf_range(0.7, 1.8), randf_range(0.7, 1.8))
+
+
+func _step_blood(dt: float) -> void:
+	if dead > 0.0:
+		blood = 1.0
+	else:
+		blood = maxf(0.0, blood - dt * 1.4)
+		if blood <= 0.02:
+			for poly in splats:
+				poly.visible = false
+	blood_rect.visible = blood > 0.02
+	blood_rect.color.a = blood * 0.55
+	for poly in splats:
+		if poly.visible:
+			poly.modulate.a = blood
 
 
 func _step_actors(dt: float) -> void:
@@ -572,6 +762,7 @@ func _step_actors(dt: float) -> void:
 		if knock != Vector2.ZERO:
 			kb.x += knock.x
 			kb.z += knock.y
+			_hurt_flash()
 			_log("Crow hit you")
 		if is_instance_valid(b) and not b.is_queued_for_deletion():
 			kept.append(b)
@@ -604,7 +795,10 @@ func _place_camera() -> void:
 		pos.y + 1.6,
 		pos.z + randf_range(-shake, shake)
 	)
-	cam.rotation = Vector3(pitch, yaw, 0)
+	if dead > 0.0 and killer and is_instance_valid(killer):
+		cam.look_at(killer.global_position + Vector3(0, 0.7, 0), Vector3.UP)
+	else:
+		cam.rotation = Vector3(pitch, yaw, 0)
 	water.position.x = pos.x
 	water.position.z = pos.z
 	bed.position.x = pos.x
@@ -613,10 +807,10 @@ func _place_camera() -> void:
 	ceiling.position.z = pos.z
 	var eye := pos.y + 1.6
 	var under := eye < 0.2 and in_water
-	var fog_color := Color("1a4a55") if under else Color("6a5a30")
+	var fog_color := Color("0c1c18") if under else Color("6f775c")
 	world_env.environment.background_color = fog_color
 	world_env.environment.fog_light_color = fog_color
-	world_env.environment.fog_density = 0.06 if under else 0.022
+	world_env.environment.fog_density = 0.055 if under else 0.02
 
 
 func _refresh_hud() -> void:
@@ -624,9 +818,11 @@ func _refresh_hud() -> void:
 	for m in monsters:
 		if is_instance_valid(m) and m.state == "charge":
 			charging += 1
-	var where := "In the water — Space or walk to climb" if in_water else "Safe on platform"
-	hud.text = "Checkpoint %d / %d\n%s\n%d monsters · %d charging" % [
-		cp, maxi(cps.size() - 1, 0), where, monsters.size(), charging
+	var where := "In the water" if in_water else "On a pad"
+	if Input.is_key_pressed(KEY_SHIFT):
+		where += " · sprint"
+	hud.text = "Level %d / %d\n%s\n%d monsters · %d charging" % [
+		level + 1, MapGen.LEVEL_COUNT, where, monsters.size(), charging
 	]
 
 
