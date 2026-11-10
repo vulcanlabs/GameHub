@@ -24,7 +24,7 @@ export async function GET(
 
   return NextResponse.json({
     slug,
-    settings: asSettings(config.settings),
+    settings: asSettings(slug, config.settings),
   });
 }
 
@@ -45,7 +45,7 @@ export async function PUT(
     return apiError(422, "invalid_body", "JSON body required");
   }
 
-  const settings = validateSettingsInput(body);
+  const settings = validateSettingsInput(slug, body);
   if (!settings) {
     return apiError(422, "invalid_body", "Invalid settings");
   }
@@ -60,6 +60,6 @@ export async function PUT(
 
   return NextResponse.json({
     slug,
-    settings: asSettings(config.settings),
+    settings: asSettings(slug, config.settings),
   });
 }

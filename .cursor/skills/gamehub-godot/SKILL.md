@@ -16,6 +16,7 @@ TikFinity stays on `bridge/tikfinity-bridge.mjs`. A Godot project never opens `w
 | --- | --- | --- | --- |
 | Don’t Touch the Water | `games/dont-touch-the-water/godot` | `dont-touch-the-water` | `desktop` |
 | Pulse Beacon | `games/pulse-beacon` | `pulse-beacon` | `desktop` |
+| Don’t Touch the Lava | `games/dont-touch-the-lava` | `dont-touch-the-lava` | `desktop` |
 
 Three.js for Don’t Touch the Water is the old browser client beside `godot/`. Do not wire it back into `/play` unless the user asks to flip `runtime` to `web`.
 

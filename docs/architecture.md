@@ -22,13 +22,13 @@ Four pieces, and only the hub is allowed to connect them.
 
 **Account.** Google sign-in creates a user with a secret hook token. Admins open games immediately. Everyone else needs `active` and a future `accessUntil`, set on `/admin/users`. That lease is checked on the hook, on the browser, and on every desktop poll.
 
-**Gift map.** Each user has one `GameConfig` per game slug: which gift name runs which action, plus settings (monster, difficulty, field of view, push, custom checkpoint step). The hub page edits that row. The Godot pause menu writes the same row through the device token.
+**Gift map.** Each user has one `GameConfig` per game slug: which gift name runs which action, plus settings. Water and Pulse Beacon store monster, difficulty, field of view, push, and custom checkpoint step. Don’t Touch the Lava stores lives, levels to beat, and platforms per level. The hub page edits that row. The Godot pause menu writes the same row through the device token.
 
 **TikFinity.** The desktop app on the stream PC exposes gifts only at `ws://127.0.0.1:21213/`. `bridge/tikfinity-bridge.mjs` forwards `gift` events to `POST /api/v1/hooks/{token}/events`. The hook drops streak partials, unknown names, and duplicates, then `lib/live.ts` publishes `{ type: "action", giftName, action, repeatCount }` for that user and slug. The hub **Test** button publishes the same event without TikFinity.
 
 **Game.** Don’t Touch the Water is a Godot 4 project at `games/dont-touch-the-water/godot`. After linking, it loads settings, then long-polls `GET /api/v1/devices/live?slug=dont-touch-the-water` for about 25 seconds at a time. Empty `events` means the lease is still valid. An action name (`push_forward`, `spawn_monster`, `up_1`, …) is applied locally. `repeatCount` repeats it, capped at 10. `POST /api/v1/devices/state` reports `ready` or `paused`. It cannot create a gift.
 
-The previous Three.js canvas is still in `games/dont-touch-the-water/` outside `godot/`. The registry row is `runtime: "desktop"`, so the hub shows a link code instead of the browser play window. Pulse Beacon (`games/pulse-beacon`) is a smaller Godot client on the same protocol.
+The previous Three.js canvas is still in `games/dont-touch-the-water/` outside `godot/`. The registry row is `runtime: "desktop"`, so the hub shows a link code instead of the browser play window. Pulse Beacon (`games/pulse-beacon`) is a smaller Godot client on the same protocol. Don’t Touch the Lava (`games/dont-touch-the-lava`) is a first-person platform chain on that protocol. Its levels are generated in the game. Gift actions are not wired yet. See [dont-touch-the-lava.md](dont-touch-the-lava.md).
 
 `lib/live.ts` keeps subscribers in memory. One Node process is the whole fan-out. Do not run a second hub and expect gifts to cross it.
 

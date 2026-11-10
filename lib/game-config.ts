@@ -1,10 +1,15 @@
 import { prisma } from "./prisma";
 import {
   DEFAULT_BINDINGS,
+  DEFAULT_LAVA_SETTINGS,
   DEFAULT_SETTINGS,
+  defaultSettingsFor,
   isAction,
+  isLavaSlug,
   normalizeBindingNames,
+  type AnySettings,
   type GameSettings,
+  type LavaSettings,
 } from "./gifts";
 import { getGame } from "@/games/registry";
 
@@ -21,7 +26,7 @@ export async function getOrCreateGameConfig(userId: string, slug: string) {
       userId,
       slug,
       bindings: DEFAULT_BINDINGS,
-      settings: DEFAULT_SETTINGS,
+      settings: defaultSettingsFor(slug),
     },
   });
 }
@@ -37,11 +42,13 @@ export function asBindings(value: unknown): Record<string, string> {
   return normalizeBindingNames(out);
 }
 
-export function asSettings(value: unknown): GameSettings {
-  const raw = (value && typeof value === "object" ? value : {}) as Record<
-    string,
-    unknown
-  >;
+export function asSettings(slug: string, value: unknown): AnySettings {
+  if (isLavaSlug(slug)) return asLavaSettings(value);
+  return asWaterSettings(value);
+}
+
+function asWaterSettings(value: unknown): GameSettings {
+  const raw = record(value);
   const monsters = ["stalker", "crawler", "beast", "shadow"] as const;
   const monster = monsters.includes(raw.monster as (typeof monsters)[number])
     ? (raw.monster as GameSettings["monster"])
@@ -54,6 +61,21 @@ export function asSettings(value: unknown): GameSettings {
       ? Math.trunc(raw.custom)
       : DEFAULT_SETTINGS.custom;
   return { monster, diff, fov, push, custom };
+}
+
+function asLavaSettings(value: unknown): LavaSettings {
+  const raw = record(value);
+  return {
+    lives: clampInt(raw.lives, 1, 20, DEFAULT_LAVA_SETTINGS.lives),
+    levels: clampInt(raw.levels, 1, 20, DEFAULT_LAVA_SETTINGS.levels),
+    platforms: clampInt(raw.platforms, 4, 40, DEFAULT_LAVA_SETTINGS.platforms),
+  };
+}
+
+function record(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
 function clampInt(
@@ -84,11 +106,19 @@ export function validateBindingsInput(
   return out;
 }
 
-export function validateSettingsInput(body: unknown): GameSettings | null {
-  if (!body || typeof body !== "object") return null;
-  const s = asSettings(body);
+export function validateSettingsInput(
+  slug: string,
+  body: unknown,
+): AnySettings | null {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return null;
   const raw = body as Record<string, unknown>;
+  if (isLavaSlug(slug)) {
+    if (raw.lives == null || raw.levels == null || raw.platforms == null) {
+      return null;
+    }
+    return asLavaSettings(body);
+  }
   if (raw.monster == null || raw.diff == null || raw.fov == null) return null;
   if (raw.push == null || raw.custom == null) return null;
-  return s;
+  return asWaterSettings(body);
 }

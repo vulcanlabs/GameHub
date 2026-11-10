@@ -4,8 +4,9 @@ const MapGen = preload("res://scripts/map_gen.gd")
 const MonsterScript = preload("res://scripts/monster.gd")
 const BirdScript = preload("res://scripts/bird.gd")
 
+const PARKOUR_ONLY := true
 const SPEED := {
-	"land": 6.5,
+	"land": 9.5,
 	"landSprint": 13.0,
 	"water": 3.5,
 	"waterSprint": 8.0,
@@ -74,10 +75,11 @@ func start(next_settings: Dictionary, hub_node: Node, is_playtest := false) -> v
 	_hud()
 	_pause_ui()
 	build_course(true)
-	for i in 5:
-		_add_bird(false)
-	for i in 9:
-		_add_bird(true)
+	if not PARKOUR_ONLY:
+		for i in 5:
+			_add_bird(false)
+		for i in 9:
+			_add_bird(true)
 	playing = true
 	if playtest:
 		return
@@ -112,7 +114,7 @@ func _water() -> void:
 	water = _plane(Vector2(160, 160), Color(0.05, 0.16, 0.14, 0.9), 0.02)
 	water.material_override = _water_shader()
 	bed = _plane(Vector2(160, 160), Color("071412"), -4.0)
-	ceiling = _plane(Vector2(180, 180), Color("8a8268"), 4.55)
+	ceiling = _plane(Vector2(180, 180), Color("8a8268"), 6.6)
 	ceiling.material_override = _ceiling_shader()
 	_hang_lights(ceiling)
 	cam = Camera3D.new()
@@ -333,7 +335,7 @@ func _read_pause() -> void:
 	cam.fov = float(settings.fov)
 	if diff_changed:
 		build_course(true)
-	elif mon_changed:
+	elif mon_changed and not PARKOUR_ONLY:
 		_clear_monsters()
 		_spawn_monster()
 
@@ -346,7 +348,8 @@ func build_course(reset_player: bool) -> void:
 	plats = built.plats
 	hazards = built.hazards
 	_clear_monsters()
-	_spawn_monster()
+	if not PARKOUR_ONLY:
+		_spawn_monster()
 	if reset_player:
 		_place_start()
 
@@ -366,6 +369,8 @@ func _clear_monsters() -> void:
 
 
 func _spawn_monster() -> void:
+	if PARKOUR_ONLY:
+		return
 	var monster = MonsterScript.new()
 	add_child(monster)
 	monster.setup(str(settings.monster))
@@ -374,6 +379,8 @@ func _spawn_monster() -> void:
 
 
 func _add_bird(bat: bool, attack_from: Vector3 = Vector3.INF) -> void:
+	if PARKOUR_ONLY:
+		return
 	var bird = BirdScript.new()
 	add_child(bird)
 	bird.setup(bat)
@@ -512,7 +519,7 @@ func _process(delta: float) -> void:
 	if playtest:
 		_step_hazards(dt)
 		_move(dt, true, 1.0, 0.0)
-		if time > 0.4 and plats.size() > 10 and monsters.size() > 0:
+		if time > 0.4 and plats.size() > 10 and (PARKOUR_ONLY or monsters.size() > 0):
 			print("playtest ok plats=%d monsters=%d" % [plats.size(), monsters.size()])
 			get_tree().quit()
 		return
@@ -532,7 +539,7 @@ func _process(delta: float) -> void:
 		_step_hazards(dt)
 		_move(dt, sprinting, forward, strafe)
 		if space_now and not space_held and on_ground and not in_water and spin_lock <= 0.0:
-			vel.y = 8.0
+			vel.y = 9.0
 	else:
 		_step_hazards(dt)
 	if pending_level >= 0 and dead <= 0.0:
@@ -554,6 +561,8 @@ func _move(dt: float, sprint: bool, forward_axis: float, strafe_axis: float) -> 
 	var sp := SPEED.land
 	if in_water:
 		sp = SPEED.waterSprint if sprint else SPEED.water
+	elif not on_ground:
+		sp = 24.0 if sprint else 16.0
 	else:
 		sp = SPEED.landSprint if sprint else SPEED.land
 	vel.x = wish.x * sp + kb.x
@@ -568,7 +577,7 @@ func _move(dt: float, sprint: bool, forward_axis: float, strafe_axis: float) -> 
 		pos.z += vel.z * dt
 		_stand_if_over_pad()
 	else:
-		vel.y -= 22.0 * dt
+		vel.y -= 28.0 * dt
 		pos += vel * dt
 		_collide(prev_y)
 	in_water = (not on_ground) and pos.y < 0.05
@@ -658,10 +667,11 @@ func _step_hazards(dt: float) -> void:
 		if not is_instance_valid(node):
 			continue
 		node.rotation.y += dt * float(h.speed)
-		var dx := pos.x - node.position.x
-		var dz := pos.z - node.position.z
+		var hub := node.global_position
+		var dx := pos.x - hub.x
+		var dz := pos.z - hub.z
 		var dist := Vector2(dx, dz).length()
-		var bar_y := node.position.y
+		var bar_y := hub.y
 		if dist >= float(h.reach) or pos.y > bar_y + 0.45 or pos.y < bar_y - 0.85:
 			continue
 		var ang := atan2(dz, dx)
@@ -670,8 +680,8 @@ func _step_hazards(dt: float) -> void:
 		if dist > 0.55 and absf(arm) > 0.4 and absf(arm_back) > 0.4:
 			continue
 		if dist > 0.2:
-			kb.x += (dx / dist) * 5.0
-			kb.z += (dz / dist) * 5.0
+			kb.x += (dx / dist) * 18.0
+			kb.z += (dz / dist) * 18.0
 		if vel.y > 1.0:
 			vel.y = 1.0
 		on_ground = false
@@ -792,7 +802,7 @@ func _place_camera() -> void:
 	var shake := 0.12 if dead > 0.0 else 0.0
 	cam.position = Vector3(
 		pos.x + randf_range(-shake, shake),
-		pos.y + 1.6,
+		pos.y + 2.6,
 		pos.z + randf_range(-shake, shake)
 	)
 	if dead > 0.0 and killer and is_instance_valid(killer):
@@ -805,7 +815,7 @@ func _place_camera() -> void:
 	bed.position.z = pos.z
 	ceiling.position.x = pos.x
 	ceiling.position.z = pos.z
-	var eye := pos.y + 1.6
+	var eye := pos.y + 2.6
 	var under := eye < 0.2 and in_water
 	var fog_color := Color("0c1c18") if under else Color("6f775c")
 	world_env.environment.background_color = fog_color

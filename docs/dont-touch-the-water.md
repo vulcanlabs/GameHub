@@ -38,9 +38,10 @@ Names match `lib/gifts.ts`. The hub maps a gift name to one of these. F keys run
 ## Rules copied from the browser build
 
 - 8 levels. Each level is a run of jumps, longer than the one before. The last pad of a level starts the next one. There is no mid-level checkpoint. Death sends you back to that level's first pad.
-- Some pads slide. Red bars spin in the gaps. Touching a bar knocks you off.
+- Some pads slide. Red bars spin on some tiles and sweep the pad. A hit shoves you toward the edge.
 - Difficulty sets gap size and minimum platform width: Easy, Normal, Hard, Nightmare. Changing it rebuilds the current level and sends you to its start.
-- Land speed 6.5, sprint 13. Water 3.5, water sprint 8. Gravity 22. Jump velocity 8. Hold Shift to sprint.
+- Land speed 9.5, sprint 13. In the air, 16 and 24, so a jump covers the wider gaps without floating. Water 3.5, water sprint 8. Gravity 28. Jump velocity 9. The camera sits 2.6 above your feet. Hold Shift to sprint.
+- Birds and the monster are off while the parkour is being tuned. Set `PARKOUR_ONLY` to false in `game.gd` to bring them back.
 - Water is the plane y = 0. Touching it splashes and every monster charges. The shadow type also blinks closer.
 - A charging monster catches you only while you are in the water and within 2.6 units. On a platform it gives up after 1.6 seconds.
 - Death waits 2.4 seconds with the monster in front of the camera and blood across the screen, then you respawn at the start of the current level.

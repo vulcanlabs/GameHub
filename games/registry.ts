@@ -31,6 +31,16 @@ export const GAMES: GameMeta[] = [
     version: "v0.1.0",
     runtime: "desktop",
   },
+  {
+    slug: "dont-touch-the-lava",
+    title: "Don’t Touch the Lava",
+    emoji: "🌋",
+    genre: "Parkour",
+    blurb:
+      "First-person Godot parkour. Jump a generated platform chain. Lava costs a life.",
+    version: "v0.1.0",
+    runtime: "desktop",
+  },
 ];
 
 export function isDesktopGame(slug: string): boolean {

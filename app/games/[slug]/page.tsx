@@ -67,7 +67,7 @@ export default async function GamePage({
       <GameDashboard
         game={game}
         initialBindings={asBindings(config.bindings)}
-        initialSettings={asSettings(config.settings)}
+        initialSettings={asSettings(slug, config.settings)}
         initialHook={{
           token: user.hookToken,
           url: hookUrl(user.hookToken),

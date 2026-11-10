@@ -8,14 +8,19 @@ import {
   GIFT_CATALOG,
   formatGiftCoins,
   giftEmoji,
+  isLavaSettings,
+  isLavaSlug,
+  isWaterSettings,
+  type AnySettings,
   type GameSettings,
   type GiftEntry,
+  type LavaSettings,
 } from "@/lib/gifts";
 
 type Props = {
   game: GameMeta;
   initialBindings: Record<string, string>;
-  initialSettings: GameSettings;
+  initialSettings: AnySettings;
   initialHook: { token: string; url: string };
   initialDevices?: DesktopDevice[];
 };
@@ -82,13 +87,16 @@ export function GameDashboard({
     });
   }
 
-  async function saveSettings(next: GameSettings) {
+  async function saveSettings(next: AnySettings) {
     setSettings(next);
-    await fetch(`/api/v1/games/${game.slug}/settings`, {
+    const res = await fetch(`/api/v1/games/${game.slug}/settings`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(next),
     });
+    if (!res.ok) return;
+    const data = (await res.json()) as { settings?: AnySettings };
+    if (data.settings) setSettings(data.settings);
   }
 
   async function testGift(name: string) {
@@ -426,7 +434,9 @@ export function GameDashboard({
           </section>
           </div>
         </div>
-      ) : (
+      ) : isLavaSlug(game.slug) && isLavaSettings(settings) ? (
+        <LavaSettingsForm settings={settings} onSave={saveSettings} />
+      ) : isWaterSettings(settings) ? (
         <div className="space-y-4 rounded-[32px] bg-[var(--card)] p-5 text-[var(--card-ink)]">
           <label className="grid gap-2 text-base font-bold text-[var(--card-mute)]">
             Monster
@@ -513,7 +523,7 @@ export function GameDashboard({
             />
           </label>
         </div>
-      )}
+      ) : null}
 
       {modal && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#163033]/45 p-3 sm:items-center">
@@ -581,6 +591,58 @@ export function GameDashboard({
           {toast}
         </div>
       )}
+    </div>
+  );
+}
+
+function LavaSettingsForm({
+  settings,
+  onSave,
+}: {
+  settings: LavaSettings;
+  onSave: (next: LavaSettings) => void;
+}) {
+  function setField(key: keyof LavaSettings, raw: string) {
+    const n = parseInt(raw, 10);
+    if (!Number.isFinite(n)) return;
+    onSave({ ...settings, [key]: n });
+  }
+
+  return (
+    <div className="space-y-4 rounded-[32px] bg-[var(--card)] p-5 text-[var(--card-ink)]">
+      <label className="grid gap-2 text-base font-bold text-[var(--card-mute)]">
+        Lives
+        <input
+          type="number"
+          min={1}
+          max={20}
+          className="h-14 rounded-full bg-[var(--sand)] px-4 text-base font-bold text-[var(--card-ink)]"
+          value={settings.lives}
+          onChange={(e) => setField("lives", e.target.value)}
+        />
+      </label>
+      <label className="grid gap-2 text-base font-bold text-[var(--card-mute)]">
+        Levels to beat
+        <input
+          type="number"
+          min={1}
+          max={20}
+          className="h-14 rounded-full bg-[var(--sand)] px-4 text-base font-bold text-[var(--card-ink)]"
+          value={settings.levels}
+          onChange={(e) => setField("levels", e.target.value)}
+        />
+      </label>
+      <label className="grid gap-2 text-base font-bold text-[var(--card-mute)]">
+        Platforms per level
+        <input
+          type="number"
+          min={4}
+          max={40}
+          className="h-14 rounded-full bg-[var(--sand)] px-4 text-base font-bold text-[var(--card-ink)]"
+          value={settings.platforms}
+          onChange={(e) => setField("platforms", e.target.value)}
+        />
+      </label>
     </div>
   );
 }

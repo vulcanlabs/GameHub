@@ -2,10 +2,10 @@ extends RefCounted
 
 const LEVEL_COUNT := 8
 const GAPS := [
-	{"gmin": 2.9, "gmax": 4.3, "wmin": 3.4},
-	{"gmin": 4.0, "gmax": 5.6, "wmin": 2.9},
-	{"gmin": 5.0, "gmax": 6.7, "wmin": 2.4},
-	{"gmin": 6.0, "gmax": 8.0, "wmin": 2.0},
+	{"gmin": 5.4, "gmax": 7.8, "wmin": 3.4},
+	{"gmin": 7.2, "gmax": 10.0, "wmin": 2.9},
+	{"gmin": 9.0, "gmax": 12.2, "wmin": 2.4},
+	{"gmin": 10.8, "gmax": 14.4, "wmin": 2.0},
 ]
 
 static func build(parent: Node, diff_i: int, level_i: int) -> Dictionary:
@@ -28,7 +28,7 @@ static func build(parent: Node, diff_i: int, level_i: int) -> Dictionary:
 	var slides_left := 1 + level / 2
 	var spins_left := 1 + level / 2
 	for i in jumps + 1:
-		var w := 6.4 if i == 0 else float(gap.wmin) + 1.4 + randf() * 1.1
+		var w := 11.0 if i == 0 else float(gap.wmin) + 5.2 + randf() * 1.8
 		var prev_x := x
 		var prev_z := z
 		if i > 0:
@@ -37,7 +37,7 @@ static func build(parent: Node, diff_i: int, level_i: int) -> Dictionary:
 			var step := pw / 2.0 + float(gap.gmin) + randf() * (float(gap.gmax) - float(gap.gmin)) + w / 2.0
 			x += sin(heading) * step
 			z += cos(heading) * step
-			x = clampf(x, -80.0, 80.0)
+			x = clampf(x, -240.0, 240.0)
 		var goal := i == jumps
 		var slide := i > 1 and i < jumps and slides_left > 0 and i % 3 == 0
 		if slide:
@@ -72,15 +72,14 @@ static func build(parent: Node, diff_i: int, level_i: int) -> Dictionary:
 		}
 		plats.append(plat)
 		pw = w
-		if i > 0 and spins_left > 0 and i % 2 == 0:
+		if i > 0 and not goal and spins_left > 0 and i % 2 == 0:
 			spins_left -= 1
-			var mid := Vector3((prev_x + x) * 0.5, 1.25, (prev_z + z) * 0.5)
 			var spin := Node3D.new()
-			spin.position = mid
-			root.add_child(spin)
+			spin.position = Vector3(0.0, 3.2, 0.0)
+			mesh.add_child(spin)
 			var arm := MeshInstance3D.new()
 			var bar := BoxMesh.new()
-			var reach := maxf(2.2, Vector2(x - prev_x, z - prev_z).length() * 0.42)
+			var reach := w * 0.5
 			bar.size = Vector3(reach * 2.0, 0.28, 0.28)
 			arm.mesh = bar
 			var sm := _mat(Color("7a2e2e"))

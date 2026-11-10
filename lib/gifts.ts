@@ -106,6 +106,8 @@ export const DEFAULT_BINDINGS: Record<string, string> = {
   Lion: "spawn_monster",
 };
 
+export const LAVA_SLUG = "dont-touch-the-lava";
+
 export type GameSettings = {
   monster: "stalker" | "crawler" | "beast" | "shadow";
   diff: number;
@@ -114,6 +116,14 @@ export type GameSettings = {
   custom: number;
 };
 
+export type LavaSettings = {
+  lives: number;
+  levels: number;
+  platforms: number;
+};
+
+export type AnySettings = GameSettings | LavaSettings;
+
 export const DEFAULT_SETTINGS: GameSettings = {
   monster: "stalker",
   diff: 1,
@@ -121,6 +131,30 @@ export const DEFAULT_SETTINGS: GameSettings = {
   push: 12,
   custom: 3,
 };
+
+export const DEFAULT_LAVA_SETTINGS: LavaSettings = {
+  lives: 3,
+  levels: 5,
+  platforms: 8,
+};
+
+export function isLavaSlug(slug: string): boolean {
+  return slug === LAVA_SLUG;
+}
+
+export function defaultSettingsFor(slug: string): AnySettings {
+  return isLavaSlug(slug)
+    ? { ...DEFAULT_LAVA_SETTINGS }
+    : { ...DEFAULT_SETTINGS };
+}
+
+export function isLavaSettings(value: AnySettings): value is LavaSettings {
+  return "lives" in value;
+}
+
+export function isWaterSettings(value: AnySettings): value is GameSettings {
+  return "monster" in value;
+}
 
 export function formatGiftCoins(coins?: number | number[]): string {
   if (coins == null) return "";

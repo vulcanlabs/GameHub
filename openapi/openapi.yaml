@@ -629,6 +629,13 @@ components:
           additionalProperties:
             type: string
     GameSettings:
+      description: >
+        Shape depends on the game slug. Don’t Touch the Lava uses LavaSettings.
+        Every other slug uses WaterSettings.
+      oneOf:
+        - $ref: "#/components/schemas/WaterSettings"
+        - $ref: "#/components/schemas/LavaSettings"
+    WaterSettings:
       type: object
       required: [monster, diff, fov, push, custom]
       properties:
@@ -649,6 +656,25 @@ components:
           maximum: 24
         custom:
           type: integer
+    LavaSettings:
+      type: object
+      required: [lives, levels, platforms]
+      properties:
+        lives:
+          type: integer
+          minimum: 1
+          maximum: 20
+          description: Hits before the run ends. Default 3.
+        levels:
+          type: integer
+          minimum: 1
+          maximum: 20
+          description: Levels to finish to beat the game. Default 5.
+        platforms:
+          type: integer
+          minimum: 4
+          maximum: 40
+          description: Platforms in each generated level, including start and goal. Default 8.
     SettingsResponse:
       type: object
       required: [slug, settings]

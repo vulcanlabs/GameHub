@@ -14,7 +14,7 @@ async function settingsFor(req: NextRequest) {
   const unknown = assertDesktopSlug(slug);
   if (unknown) return { error: unknown } as const;
   const gate = await requireDevice(req, slug);
-  if ("error" in gate) return gate;
+  if ("error" in gate) return { error: gate.error } as const;
   const config = await getOrCreateGameConfig(gate.device.userId, slug);
   if (!config) return { error: apiError(404, "not_found", "Unknown game") } as const;
   return { slug, config } as const;
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
   if ("error" in found) return found.error;
   return NextResponse.json({
     slug: found.slug,
-    settings: asSettings(found.config.settings),
+    settings: asSettings(found.slug, found.config.settings),
   });
 }
 
@@ -39,7 +39,7 @@ export async function PUT(req: NextRequest) {
   } catch {
     return apiError(422, "invalid_body", "JSON body required");
   }
-  const settings = validateSettingsInput(body);
+  const settings = validateSettingsInput(found.slug, body);
   if (!settings) return apiError(422, "invalid_body", "Invalid settings");
 
   const config = await prisma.gameConfig.update({
@@ -48,6 +48,6 @@ export async function PUT(req: NextRequest) {
   });
   return NextResponse.json({
     slug: found.slug,
-    settings: asSettings(config.settings),
+    settings: asSettings(found.slug, config.settings),
   });
 }

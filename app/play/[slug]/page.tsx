@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getGame } from "@/games/registry";
 import { asSettings, getOrCreateGameConfig } from "@/lib/game-config";
+import { isWaterSettings } from "@/lib/gifts";
 import { GameCanvas } from "@/games/dont-touch-the-water";
 import { canAccessGames } from "@/lib/roles";
 
@@ -38,9 +39,12 @@ export default async function PlayPage({
     );
   }
 
+  const settings = asSettings(slug, config.settings);
+  if (!isWaterSettings(settings)) notFound();
+
   return (
     <div className="h-screen w-screen overflow-hidden">
-      <GameCanvas slug={slug} initialSettings={asSettings(config.settings)} />
+      <GameCanvas slug={slug} initialSettings={settings} />
     </div>
   );
 }
