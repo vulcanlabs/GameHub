@@ -17,6 +17,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 | [docs/install.md](docs/install.md) | Install, first use, go live |
 | [docs/architecture.md](docs/architecture.md) | How the hub, bridge, and games connect |
 | [docs/dont-touch-the-water.md](docs/dont-touch-the-water.md) | Godot course, controls, actions |
+| [docs/dont-touch-the-grass.md](docs/dont-touch-the-grass.md) | Backrooms parkour, ant chase rules, narrator |
 | [docs/adding-a-game.md](docs/adding-a-game.md) | New game checklist |
 | [docs/tikfinity.md](docs/tikfinity.md) | Hooks, bridge, SSE |
 | [docs/auth-and-roles.md](docs/auth-and-roles.md) | Google OAuth, admin/user, lease |

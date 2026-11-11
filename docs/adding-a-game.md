@@ -19,7 +19,7 @@
 ## Conventions
 
 - **Slug** is kebab-case and matches the folder name.
-- Settings shape depends on the slug. Water and Pulse Beacon use `{ monster, diff, fov, push, custom }`. Don’t Touch the Lava uses `{ lives, levels, platforms }`. `asSettings(slug, value)` and `validateSettingsInput(slug, body)` keep them apart.
+- Settings shape depends on the slug. Water and Pulse Beacon use `{ monster, diff, fov, push, custom }`. Don’t Touch the Lava uses `{ lives, levels, platforms }`. Don’t Touch the Grass uses `{ version: 1 }`. `asSettings(slug, value)` and `validateSettingsInput(slug, body)` keep them apart.
 - Web play opens as a **popup** from the hub (`window.open('/play/<slug>')`). Keep hub chrome off the play page. Desktop games do not use that popup.
 - Web live gifts: `GET /api/v1/games/<slug>/live` (SSE). Desktop live gifts: `GET /api/v1/devices/live?slug=` with a device bearer. Events look like `{ type: 'action', giftName, action, repeatCount, label? }`.
 - Web games import `three` from npm. No CDN. No `document.write` of a full HTML game.

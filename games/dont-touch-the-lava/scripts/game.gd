@@ -17,6 +17,12 @@ var player
 var goal_area: Area3D
 var lava_area: Area3D
 var hurt_lock := false
+var hurt_flash: ColorRect
+var recovering := false
+var recover_from := Vector3.ZERO
+var recover_to := Vector3.ZERO
+var recover_t := 0.0
+var death_flash := 0.0
 var playtest_done := false
 
 var hud: Label
@@ -81,13 +87,7 @@ func _lava() -> void:
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(400, 400)
 	mesh.mesh = plane
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color("c2410c")
-	mat.emission_enabled = true
-	mat.emission = Color("ea580c")
-	mat.emission_energy_multiplier = 1.4
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mesh.material_override = mat
+	mesh.material_override = _lava_material()
 	mesh.position.y = -2.2
 	add_child(mesh)
 	lava_area = Area3D.new()
@@ -98,10 +98,31 @@ func _lava() -> void:
 	var box := BoxShape3D.new()
 	box.size = Vector3(400, 2.0, 400)
 	shape.shape = box
-	lava_area.position = Vector3(0, -3.0, 0)
+	lava_area.position = Vector3(0, -3.2, 0)
 	lava_area.add_child(shape)
 	add_child(lava_area)
 	lava_area.body_entered.connect(_on_lava_body)
+
+
+func _lava_material() -> ShaderMaterial:
+	var noise := FastNoiseLite.new()
+	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	noise.frequency = 0.05
+	var tex := NoiseTexture2D.new()
+	tex.width = 512
+	tex.height = 512
+	tex.seamless = true
+	tex.noise = noise
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://shaders/lava.gdshader")
+	mat.set_shader_parameter("noise_texture", tex)
+	mat.set_shader_parameter("noise_scale", 8.0)
+	mat.set_shader_parameter("scroll_x", 0.02)
+	mat.set_shader_parameter("scroll_y", 0.01)
+	mat.set_shader_parameter("wave_speed", 0.12)
+	mat.set_shader_parameter("noise_wave_speed", 0.08)
+	mat.set_shader_parameter("oscillation_speed", 0.15)
+	return mat
 
 
 func _hud() -> void:
@@ -113,6 +134,14 @@ func _hud() -> void:
 	hud.add_theme_color_override("font_color", Color("f4efe6"))
 	layer.add_child(hud)
 	_refresh_hud()
+	var flash_layer := CanvasLayer.new()
+	flash_layer.layer = 30
+	add_child(flash_layer)
+	hurt_flash = ColorRect.new()
+	hurt_flash.color = Color(0.75, 0.02, 0.02, 0.0)
+	hurt_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hurt_flash.set_anchors_preset(Control.PRESET_FULL_RECT)
+	flash_layer.add_child(hurt_flash)
 
 
 func _refresh_hud() -> void:
@@ -331,6 +360,10 @@ func _restart() -> void:
 	level_index = 0
 	phase = "play"
 	hurt_lock = false
+	recovering = false
+	death_flash = 0.0
+	if hurt_flash:
+		hurt_flash.color.a = 0.0
 	_set_end(false)
 	pause_layer.visible = false
 	click_layer.visible = true
@@ -353,18 +386,45 @@ func _lose_life() -> void:
 	if phase != "play" or playtest or hurt_lock:
 		return
 	hurt_lock = true
-	phase = "hurt"
+	player.active = false
 	lives_left -= 1
 	_refresh_hud()
 	if lives_left <= 0:
 		phase = "over"
-		player.active = false
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		end_label.text = "Out of lives"
-		_set_end(true)
+		death_flash = 0.55
 		return
-	_spawn()
+	phase = "recover"
+	recover_from = player.global_position
+	recover_to = _start_pos()
+	recover_t = 0.0
+	recovering = true
+
+
+func _start_pos() -> Vector3:
+	var start: Vector3 = plats[0].position
+	return Vector3(start.x, float(plats[0].top) + 0.05, start.z)
+
+
+func _step_recover(delta: float) -> void:
+	recover_t += delta / 0.85
+	var t := clampf(recover_t, 0.0, 1.0)
+	var p := recover_from.lerp(recover_to, t)
+	p.y += sin(t * PI) * 3.4
+	player.velocity = Vector3.ZERO
+	player.global_position = p
+	if plats.size() > 1:
+		player.face_toward(plats[1].position)
+	if hurt_flash:
+		hurt_flash.color.a = abs(sin(t * PI * 2.0)) * 0.72
+	if t < 1.0:
+		return
+	recovering = false
+	if hurt_flash:
+		hurt_flash.color.a = 0.0
 	phase = "play"
+	_spawn()
 	_clear_hurt.call_deferred()
 
 
@@ -386,12 +446,12 @@ func _on_goal_body(body: Node) -> void:
 		return
 	level_index += 1
 	_apply_pending()
-	_build_level()
 	phase = "play"
+	_build_level()
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if playtest or phase == "win" or phase == "over":
+	if playtest or phase == "win" or phase == "over" or phase == "recover":
 		return
 	if event is InputEventMouseButton and event.pressed and click_layer.visible and not pause_layer.visible:
 		click_layer.visible = false
@@ -409,7 +469,19 @@ func _unhandled_input(event: InputEvent) -> void:
 			_set_pause(true)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	if recovering:
+		_step_recover(delta)
+		return
+	if death_flash > 0.0:
+		death_flash -= delta
+		if hurt_flash:
+			hurt_flash.color.a = sin(clampf(death_flash / 0.55, 0.0, 1.0) * PI) * 0.75
+		if death_flash <= 0.0:
+			if hurt_flash:
+				hurt_flash.color.a = 0.0
+			_set_end(true)
+		return
 	if not playtest or playtest_done:
 		return
 	playtest_done = true

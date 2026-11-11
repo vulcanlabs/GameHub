@@ -87,5 +87,6 @@ func _physics_process(delta: float) -> void:
 		velocity.x = move_toward(velocity.x, 0.0, SPEED * 8.0 * delta)
 		velocity.z = move_toward(velocity.z, 0.0, SPEED * 8.0 * delta)
 	move_and_slide()
-	if global_position.y < -1.5:
+	# Feet sit about 0.1 above the body origin. The lava plane is at y = -2.2.
+	if global_position.y <= -2.3:
 		fell.emit()

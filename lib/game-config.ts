@@ -1,14 +1,17 @@
 import { prisma } from "./prisma";
 import {
   DEFAULT_BINDINGS,
+  DEFAULT_GRASS_SETTINGS,
   DEFAULT_LAVA_SETTINGS,
   DEFAULT_SETTINGS,
   defaultSettingsFor,
   isAction,
+  isGrassSlug,
   isLavaSlug,
   normalizeBindingNames,
   type AnySettings,
   type GameSettings,
+  type GrassSettings,
   type LavaSettings,
 } from "./gifts";
 import { getGame } from "@/games/registry";
@@ -44,6 +47,7 @@ export function asBindings(value: unknown): Record<string, string> {
 
 export function asSettings(slug: string, value: unknown): AnySettings {
   if (isLavaSlug(slug)) return asLavaSettings(value);
+  if (isGrassSlug(slug)) return asGrassSettings(value);
   return asWaterSettings(value);
 }
 
@@ -69,6 +73,13 @@ function asLavaSettings(value: unknown): LavaSettings {
     lives: clampInt(raw.lives, 1, 20, DEFAULT_LAVA_SETTINGS.lives),
     levels: clampInt(raw.levels, 1, 20, DEFAULT_LAVA_SETTINGS.levels),
     platforms: clampInt(raw.platforms, 4, 40, DEFAULT_LAVA_SETTINGS.platforms),
+  };
+}
+
+function asGrassSettings(value: unknown): GrassSettings {
+  const raw = record(value);
+  return {
+    version: clampInt(raw.version, 1, 1, DEFAULT_GRASS_SETTINGS.version),
   };
 }
 
@@ -117,6 +128,10 @@ export function validateSettingsInput(
       return null;
     }
     return asLavaSettings(body);
+  }
+  if (isGrassSlug(slug)) {
+    if (raw.version == null) return null;
+    return asGrassSettings(body);
   }
   if (raw.monster == null || raw.diff == null || raw.fov == null) return null;
   if (raw.push == null || raw.custom == null) return null;

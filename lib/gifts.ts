@@ -107,6 +107,7 @@ export const DEFAULT_BINDINGS: Record<string, string> = {
 };
 
 export const LAVA_SLUG = "dont-touch-the-lava";
+export const GRASS_SLUG = "dont-touch-the-grass";
 
 export type GameSettings = {
   monster: "stalker" | "crawler" | "beast" | "shadow";
@@ -122,7 +123,11 @@ export type LavaSettings = {
   platforms: number;
 };
 
-export type AnySettings = GameSettings | LavaSettings;
+export type GrassSettings = {
+  version: number;
+};
+
+export type AnySettings = GameSettings | LavaSettings | GrassSettings;
 
 export const DEFAULT_SETTINGS: GameSettings = {
   monster: "stalker",
@@ -138,18 +143,30 @@ export const DEFAULT_LAVA_SETTINGS: LavaSettings = {
   platforms: 8,
 };
 
+export const DEFAULT_GRASS_SETTINGS: GrassSettings = {
+  version: 1,
+};
+
 export function isLavaSlug(slug: string): boolean {
   return slug === LAVA_SLUG;
 }
 
+export function isGrassSlug(slug: string): boolean {
+  return slug === GRASS_SLUG;
+}
+
 export function defaultSettingsFor(slug: string): AnySettings {
-  return isLavaSlug(slug)
-    ? { ...DEFAULT_LAVA_SETTINGS }
-    : { ...DEFAULT_SETTINGS };
+  if (isLavaSlug(slug)) return { ...DEFAULT_LAVA_SETTINGS };
+  if (isGrassSlug(slug)) return { ...DEFAULT_GRASS_SETTINGS };
+  return { ...DEFAULT_SETTINGS };
 }
 
 export function isLavaSettings(value: AnySettings): value is LavaSettings {
   return "lives" in value;
+}
+
+export function isGrassSettings(value: AnySettings): value is GrassSettings {
+  return "version" in value && !("monster" in value) && !("lives" in value);
 }
 
 export function isWaterSettings(value: AnySettings): value is GameSettings {

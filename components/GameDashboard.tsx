@@ -8,6 +8,7 @@ import {
   GIFT_CATALOG,
   formatGiftCoins,
   giftEmoji,
+  isGrassSlug,
   isLavaSettings,
   isLavaSlug,
   isWaterSettings,
@@ -436,6 +437,10 @@ export function GameDashboard({
         </div>
       ) : isLavaSlug(game.slug) && isLavaSettings(settings) ? (
         <LavaSettingsForm settings={settings} onSave={saveSettings} />
+      ) : isGrassSlug(game.slug) ? (
+        <p className="rounded-[32px] bg-[var(--card)] p-5 text-base text-[var(--card-ink)]">
+          Open the Godot app. Meadow only. No knobs yet.
+        </p>
       ) : isWaterSettings(settings) ? (
         <div className="space-y-4 rounded-[32px] bg-[var(--card)] p-5 text-[var(--card-ink)]">
           <label className="grid gap-2 text-base font-bold text-[var(--card-mute)]">

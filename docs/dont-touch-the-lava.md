@@ -19,6 +19,6 @@ The run starts at 3 lives, 5 levels, and 8 platforms. Pause-menu edits apply on 
 
 ## Generator
 
-`scripts/map_gen.gd` builds one chain. The seed is the level index, so the same settings rebuild the same course. Later levels widen the gap up to a fixed jump. Every gap stays makeable.
+`scripts/map_gen.gd` builds one chain. The seed is the level index, so the same settings rebuild the same course. Each next platform stays in the 180° in front of the last jump, so the run keeps facing forward. The goal platform is the farthest from the start. Gaps vary, and every gap stays inside a running jump.
 
 Gifts are not applied yet. The client still long-polls so the account lease stays checked.

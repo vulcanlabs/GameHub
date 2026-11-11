@@ -41,6 +41,16 @@ export const GAMES: GameMeta[] = [
     version: "v0.1.0",
     runtime: "desktop",
   },
+  {
+    slug: "dont-touch-the-grass",
+    title: "Don’t Touch the Grass",
+    emoji: "🌱",
+    genre: "Parkour",
+    blurb:
+      "First-person Backrooms horror parkour. Stay on the platforms. A giant ant owns the grass.",
+    version: "v0.1.0",
+    runtime: "desktop",
+  },
 ];
 
 export function isDesktopGame(slug: string): boolean {

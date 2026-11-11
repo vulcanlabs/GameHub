@@ -631,10 +631,11 @@ components:
     GameSettings:
       description: >
         Shape depends on the game slug. Don’t Touch the Lava uses LavaSettings.
-        Every other slug uses WaterSettings.
+        Don’t Touch the Grass uses GrassSettings. Every other slug uses WaterSettings.
       oneOf:
         - $ref: "#/components/schemas/WaterSettings"
         - $ref: "#/components/schemas/LavaSettings"
+        - $ref: "#/components/schemas/GrassSettings"
     WaterSettings:
       type: object
       required: [monster, diff, fov, push, custom]
@@ -675,6 +676,15 @@ components:
           minimum: 4
           maximum: 40
           description: Platforms in each generated level, including start and goal. Default 8.
+    GrassSettings:
+      type: object
+      required: [version]
+      properties:
+        version:
+          type: integer
+          minimum: 1
+          maximum: 1
+          description: Placeholder until the game has settings. Always 1.
     SettingsResponse:
       type: object
       required: [slug, settings]
