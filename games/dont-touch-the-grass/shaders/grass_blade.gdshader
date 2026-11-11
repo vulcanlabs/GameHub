@@ -4,8 +4,9 @@ shader_type spatial;
 // specular_disabled: grass has no shine worth paying for, and it is most of the pixels on screen.
 render_mode cull_disabled, blend_mix, depth_draw_opaque, specular_disabled;
 
-uniform vec3 color : source_color = vec3(0.012, 0.075, 0.010);
-uniform vec3 color2 : source_color = vec3(0.17, 0.56, 0.06);
+uniform vec3 color : source_color = vec3(0.035, 0.075, 0.02);
+uniform vec3 color2 : source_color = vec3(0.20, 0.26, 0.07);
+uniform vec3 dry : source_color = vec3(0.40, 0.34, 0.12);
 uniform sampler2D noise : hint_default_white, repeat_enable, filter_linear;
 uniform float noise_scale = 9.0;
 uniform float noise_mix = 0.5;
@@ -28,9 +29,12 @@ void vertex() {
 
 void fragment() {
 	float n = texture(noise, world_position.xz / noise_scale).x;
-	vec3 gradient = mix(color, color2, UV.y);
-	ALBEDO = mix(gradient, gradient * n, noise_mix);
-	ROUGHNESS = 0.85;
-	// Faint self-glow keeps the green readable in dark corners. It is what makes the grass look unnatural.
-	EMISSION = color2 * UV.y * mix(0.02, 0.06, stir);
+	float fine = texture(noise, world_position.xz * 0.35 + 1.7).x;
+	vec3 gradient = mix(color, color2, smoothstep(0.12, 0.92, UV.y));
+	gradient *= mix(0.62, 1.22, fine);
+	vec3 blade = mix(gradient, gradient * mix(0.8, 1.1, n), noise_mix);
+	float straw = smoothstep(0.68, 1.0, UV.y) * smoothstep(0.38, 0.75, fine);
+	ALBEDO = mix(blade, dry, straw * 0.5);
+	ROUGHNESS = 0.9;
+	EMISSION = vec3(0.0);
 }

@@ -11,6 +11,7 @@
 extends Node
 
 const EnemyScript = preload("res://scripts/enemies/enemy.gd")
+const GrassScript = preload("res://scripts/level/grass_field.gd")
 
 const ACTIONS := ["move_forward", "move_back", "move_left", "move_right", "jump", "sprint"]
 
@@ -35,6 +36,7 @@ func run(p_game: Node3D, shots_dir: String) -> void:
 		await _shots(shots_dir)
 		get_tree().quit()
 		return
+	game.hold_level = true
 	game.narrator.line_started.connect(_on_line_started)
 	game.narrator.line_finished.connect(func(_id: String) -> void: _narrator_busy = false)
 	game.level_completed.connect(func(_number: int) -> void: _completions += 1)
@@ -48,6 +50,9 @@ func run(p_game: Node3D, shots_dir: String) -> void:
 	await _test_chase()
 	await _test_death()
 	await _test_ui_and_narrator()
+	await _test_escape_and_audio()
+	await _test_pause_and_keys()
+	await _test_all_levels()
 	print("playtest ok" if _failed == 0 else "playtest fail (%d)" % _failed)
 	get_tree().quit(0 if _failed == 0 else 1)
 
@@ -108,7 +113,7 @@ func _test_movement() -> void:
 	for i in 60:
 		apex = maxf(apex, player.global_position.y - start.y)
 		await get_tree().physics_frame
-	_check("5", "Space jumps and lands", apex > 1.1 and apex < 1.35 and player.is_on_floor() and absf(player.global_position.y - start.y) < 0.02,
+	_check("5", "Space jumps and lands", apex > 1.35 and apex < 1.65 and player.is_on_floor() and absf(player.global_position.y - start.y) < 0.02,
 		"apex %.2f m" % apex)
 
 
@@ -126,10 +131,11 @@ func _test_route() -> void:
 		highest = maxf(highest, platform.top)
 		lowest_underside = minf(lowest_underside, platform.top - platform.UNDERSIDE_DROP)
 	_check("7", "every platform has exactly one supporting pole", one_pole, "%d platforms" % platforms.size())
-	_check("8", "platforms are low above the grass", highest <= 1.6, "tops 1.00 to %.2f m" % highest)
+	_check("8", "platforms are low and climbable from the grass", highest <= 1.45 and highest >= 1.0, "tops up to %.2f m" % highest)
 	_check("8b", "monsters fit under the lowest platform", lowest_underside > game.level.NAV_AGENT_HEIGHT,
 		"lowest underside %.2f m, monster height %.2f m" % [lowest_underside, game.level.NAV_AGENT_HEIGHT])
 
+	ant.frozen = true
 	player.teleport(game.level.start_position(), game.level.start_yaw())
 	await _until(player.is_on_floor, 1.0)
 	var landed := 1
@@ -137,7 +143,7 @@ func _test_route() -> void:
 	for i in range(platforms.size() - 1):
 		var ok: bool = await _hop(platforms[i], platforms[i + 1], i + 1 == platforms.size() - 1)
 		if not ok:
-			failed_at = "jump %d to %d" % [i + 1, i + 2]
+			failed_at = "jump %d to %d from %s to %s player %s" % [i + 1, i + 2, platforms[i].top_center(), platforms[i + 1].top_center(), player.global_position]
 			break
 		landed += 1
 	_release_all()
@@ -235,7 +241,7 @@ func _test_death() -> void:
 	ant.caught_player.emit(ant)
 	_check("19", "extra catch reports during the jumpscare are ignored", game.deaths == 1 and game.phase == game.Phase.DYING)
 	await _seconds(0.3)
-	_check("18b", "the ant's face is at the camera", ant.mouth_position().distance_to(player.cam.global_position) < 1.3 and lunged < 2.5,
+	_check("18b", "the ant's face is at the camera", ant.mouth_position().distance_to(player.cam.global_position) < 1.6 and lunged < 2.5,
 		"%.2f m from the lens" % ant.mouth_position().distance_to(player.cam.global_position))
 
 	# 20. Back at the start, in control, ant calm.
@@ -265,9 +271,181 @@ func _test_ui_and_narrator() -> void:
 		"spoke: %s (sound muted in this test)" % ", ".join(_spoken))
 
 
+func _test_escape_and_audio() -> void:
+	_place_ant(Vector2(12.0, 10.0))
+	var before: int = player.steps_played
+	player.teleport(game.level.start_position(), 0.0)
+	await _frames(3)
+	Input.action_press("move_forward")
+	await _seconds(1.0)
+	var walked: int = player.steps_played - before
+	_release_all()
+	await _seconds(0.4)
+	var stood: int = player.steps_played
+	await _seconds(0.4)
+	var still: bool = player.steps_played == stood
+	before = player.steps_played
+	player.teleport(game.level.start_position(), 0.0)
+	await _frames(3)
+	Input.action_press("move_forward")
+	Input.action_press("sprint")
+	await _seconds(1.0)
+	var ran: int = player.steps_played - before
+	_release_all()
+	_check("steps", "footsteps while moving, faster when sprinting, silent when still", walked >= 2 and ran > walked and still,
+		"walk %d, sprint %d" % [walked, ran])
+
+	var air_before: int = player.steps_played
+	player.teleport(game.level.start_position(), 0.0)
+	await _frames(2)
+	Input.action_press("jump")
+	await _frames(3)
+	Input.action_release("jump")
+	var air_steps := 0
+	for i in 20:
+		if not player.is_on_floor() and player.steps_played > air_before:
+			air_steps += 1
+		air_before = player.steps_played
+		await get_tree().physics_frame
+	_check("air", "no footsteps in the air", air_steps == 0)
+
+	# Stand just east of the first platform and jump back onto it.
+	_place_ant(Vector2(14.0, 10.0))
+	await _put_on_grass(Vector2(-13.7, -7.0))
+	await _seconds(0.35)
+	_check("danger", "grass shows the danger effect and heartbeat", game.hud.danger() > 0.35 and game._heart.playing,
+		"danger %.2f" % game.hud.danger())
+	player.set_look(PI * 0.5, 0.0)
+	Input.action_press("move_forward")
+	Input.action_press("jump")
+	await _frames(4)
+	Input.action_release("jump")
+	var back: bool = await _until(func() -> bool:
+		return player.is_on_floor() and not game.level.hazard.player_inside and game.phase == game.Phase.PLAYING, 2.0)
+	_release_all()
+	await _seconds(0.6)
+	_check("escape", "falling onto the grass can be jumped back from", back and game.deaths == 1 and game.hud.danger() < 0.08,
+		"danger %.2f" % game.hud.danger())
+
+
+func _test_pause_and_keys() -> void:
+	var paused := false
+	game.toggle_pause()
+	paused = game.get_tree().paused and game.pause_menu.visible
+	game.pause_menu.slider.value = 100
+	var fov_ok: bool = is_equal_approx(player.fov, 100.0) and is_equal_approx(player.cam.fov, 100.0)
+	game.toggle_pause()
+	_check("pause", "ESC pause menu sets the field of view", paused and fov_ok and not game.get_tree().paused,
+		"fov %.0f" % player.fov)
+
+	_place_ant(Vector2(14.0, 10.0))
+	player.teleport(game.level.start_position(), 0.0)
+	await _frames(2)
+	await _tap("stream_push")
+	var fell: bool = await _until(func() -> bool: return game.level.hazard.player_inside, 1.2)
+	_check("F1", "F1 pushes the player off into the grass", fell)
+	await _tap("stream_level_up")
+	_check("F2", "F2 advances one level", game.level_number == 2 and game.hud.level_text() == "LEVEL 2/50", game.hud.level_text())
+	await _tap("stream_level_up")
+	_check("F2b", "a second F2 advances one more level", game.level_number == 3)
+	await _tap("stream_level_down")
+	_check("F3", "F3 goes back one level", game.level_number == 2)
+	await _tap("stream_level_down5")
+	_check("F5", "F5 cannot go below level 1", game.level_number == 1)
+	await _tap("stream_level_up5")
+	_check("F4", "F4 advances five levels", game.level_number == 6, game.hud.level_text())
+	var monsters: int = game.level.enemies.size()
+	await _tap("stream_add_monster")
+	_check("F6", "F6 adds one monster", game.level.enemies.size() == monsters + 1, "%d" % game.level.enemies.size())
+	await _tap("stream_reset_arm")
+	var left: float = game._countdown
+	await _seconds(0.3)
+	await _tap("stream_reset_arm")
+	_check("F7", "F7 starts one 60 second reset", left <= 60.0 and left > 59.0 and game._countdown < left and game._countdown > 50.0,
+		"%.2f then %.2f" % [left, game._countdown])
+	await _tap("stream_reset_save")
+	_check("F9", "F9 cancels the reset", game._countdown < 0.0 and game.level_number == 6 and game.hud._saved.visible)
+	game.deaths = 4
+	game.completed_levels.append(1)
+	await _tap("stream_reset_now")
+	_check("F8", "F8 resets the run to level 1", game.level_number == 1 and game.deaths == 0 and game.completed_levels.is_empty() and game.hud.level_text() == "LEVEL 1/50")
+	game.go_to_level(50)
+	await _frames(5)
+	await _tap("stream_level_up")
+	var stayed: bool = game.level_number == 50
+	await _tap("stream_level_up5")
+	_check("cap", "level shortcuts stay inside 1 to 50", stayed and game.level_number == 50)
+
+
+func _test_all_levels() -> void:
+	game.hold_level = true
+	game.finish_fade = 0.02
+	GrassScript.dense = false
+	game._load_level(1)
+	await _frames(5)
+	var bad := ""
+	for number in 50:
+		var n := number + 1
+		if game.level_number != n:
+			bad = "arrived on %d, expected %d" % [game.level_number, n]
+			break
+		var platforms: Array = game.level.platforms
+		var spider := false
+		for enemy in game.level.enemies:
+			if enemy.kind == "spider":
+				spider = true
+		if n >= 25 and not spider:
+			bad = "level %d has no spider" % n
+			break
+		if n < 25 and spider:
+			bad = "level %d has a spider too early" % n
+			break
+		var done: int = _completions
+		var failed_at := ""
+		for enemy in game.level.enemies:
+			enemy.frozen = true
+		player.teleport(game.level.start_position(), game.level.start_yaw())
+		await _until(player.is_on_floor, 1.0)
+		for i in range(platforms.size() - 1):
+			var ok: bool = await _hop(platforms[i], platforms[i + 1], i + 1 == platforms.size() - 1)
+			if not ok:
+				failed_at = "level %d jump %d floor %s vel %s player %s" % [n, i + 1, player.is_on_floor(), player.velocity, player.global_position]
+				break
+		if failed_at != "":
+			bad = failed_at
+			break
+		var finished := _completions > done
+		if not finished:
+			finished = await _until(func() -> bool: return _completions > done, 2.0)
+		if not finished:
+			bad = "level %d finish pad" % n
+			break
+		var settled: bool = await _until(func() -> bool: return game.phase == game.Phase.PLAYING, 3.0)
+		if not settled:
+			bad = "level %d stayed in the finish fade" % n
+			break
+		if n < 50:
+			game.go_to_level(n + 1)
+			await _frames(5)
+	_check("levels", "all 50 routes can be finished", bad == "", bad if bad != "" else "50 routes")
+
+
 # ---------------------------------------------------------------- the jumping bot
 
 # Walk to the edge of `from`, jump, land on `to`, walk to its middle. Sprints only when the gap needs it.
+func _tap(action: String) -> void:
+	var ev := InputEventAction.new()
+	ev.action = action
+	ev.pressed = true
+	Input.parse_input_event(ev)
+	await _frames(3)
+	var up := InputEventAction.new()
+	up.action = action
+	up.pressed = false
+	Input.parse_input_event(up)
+	await _frames(3)
+
+
 func _hop(from: StaticBody3D, to: StaticBody3D, is_last: bool) -> bool:
 	var from_rect: Rect2 = from.rect()
 	var to_rect: Rect2 = to.rect()
@@ -276,7 +454,14 @@ func _hop(from: StaticBody3D, to: StaticBody3D, is_last: bool) -> bool:
 		Input.action_press("sprint")
 	var jumped := false
 	var landed := false
-	for i in 60 * 6:
+	var completions_before := _completions
+	for i in 60 * 8:
+		from_rect = from.rect()
+		to_rect = to.rect()
+		target = to_rect.get_center()
+		if is_last and _completions > completions_before:
+			_release_all()
+			return true
 		var at := _flat(player.global_position)
 		var direction := (target - at).normalized()
 		player.set_look(atan2(-direction.x, -direction.y), 0.0)
@@ -294,7 +479,7 @@ func _hop(from: StaticBody3D, to: StaticBody3D, is_last: bool) -> bool:
 				Input.action_press("move_forward")
 			if game.level.hazard.player_inside:
 				break
-			if player.is_on_floor() and absf(player.global_position.y - to.top) < 0.05:
+			if player.is_on_floor() and to_rect.has_point(at) and absf(player.global_position.y - to.top) < 0.08:
 				landed = true
 				break
 		await get_tree().physics_frame
@@ -304,7 +489,7 @@ func _hop(from: StaticBody3D, to: StaticBody3D, is_last: bool) -> bool:
 	# Walk to the middle. On the last platform that is where the finish pad is.
 	for i in 60 * 3:
 		var at := _flat(player.global_position)
-		if is_last and _completions > 0:
+		if is_last and _completions > completions_before:
 			break
 		if at.distance_to(target) < 0.25:
 			break
@@ -314,7 +499,7 @@ func _hop(from: StaticBody3D, to: StaticBody3D, is_last: bool) -> bool:
 		await get_tree().physics_frame
 	_release_all()
 	await _seconds(0.2)
-	return is_last or (player.is_on_floor() and absf(player.global_position.y - to.top) < 0.05)
+	return is_last or (player.is_on_floor() and to.rect().has_point(_flat(player.global_position)))
 
 
 # ---------------------------------------------------------------- screenshots

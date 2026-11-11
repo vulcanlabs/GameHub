@@ -36,4 +36,16 @@ const EVENTS := {
 		{"id": "level_complete_1", "text": "Congratulations. You survived. Somehow."},
 		{"id": "level_complete_2", "text": "You made it. Do not let it go to your head."},
 	]},
+	"milestone_10": {"priority": 2, "cooldown": 0.0, "queue": true, "lines": [
+		{"id": "milestone_10_1", "text": "Ten levels. The grass is still winning more often than you are."},
+	]},
+	"milestone_25": {"priority": 2, "cooldown": 0.0, "queue": true, "lines": [
+		{"id": "milestone_25_1", "text": "Level twenty five. The ants brought a friend. It has more legs."},
+	]},
+	"milestone_50": {"priority": 3, "cooldown": 0.0, "queue": true, "lines": [
+		{"id": "milestone_50_1", "text": "Level fifty. If you die here, I will never let you forget it."},
+	]},
+	"reset": {"priority": 2, "cooldown": 0.0, "queue": false, "lines": [
+		{"id": "reset_1", "text": "Back to the start. The grass kept your score."},
+	]},
 }

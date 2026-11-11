@@ -13,6 +13,9 @@ const FAR_DISTANCE := 13.0
 const FAR_KEEP_EVERY := 5
 const FAR_WIDEN := 2.3
 
+# The route test turns this off so it does not rebuild every blade on all 50 levels.
+static var dense := true
+
 var blade_count := 0
 var _blade_mat: ShaderMaterial
 var _rng := RandomNumberGenerator.new()
@@ -22,11 +25,14 @@ var _rng := RandomNumberGenerator.new()
 func build(area: Rect2, blocked: Array[Rect2]) -> void:
 	_rng.seed = 7
 	_ground(area)
-	_blades(area, blocked)
+	if dense:
+		_blades(area, blocked)
 
 
 # 0 = calm, 1 = the whole floor shivers. Driven by the chase.
 func set_stir(amount: float) -> void:
+	if _blade_mat == null:
+		return
 	_blade_mat.set_shader_parameter("stir", amount)
 
 

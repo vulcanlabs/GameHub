@@ -1,6 +1,13 @@
 # PLACEHOLDER AUDIO. Every sound here is synthesized from maths at startup because the project has no audio files.
-# They are stand-ins so the game is not silent. Replace each function body with `load("res://audio/...")`
-# once real recordings exist; nothing else in the game needs to change.
+# They are stand-ins so the game is not silent. Drop a real file at the path named in each function and it is used instead.
+# Nothing else in the game needs to change.
+#
+#   res://audio/footsteps/tile.ogg
+#   res://audio/footsteps/grass.ogg
+#   res://audio/music/ambience.ogg
+#   res://audio/heartbeat.ogg
+#   res://audio/jumpscare/ant.ogg
+#   res://audio/jumpscare/spider.ogg
 extends RefCounted
 
 const RATE := 22050
@@ -101,7 +108,9 @@ static func chitter() -> AudioStreamWAV:
 
 
 # Jumpscare: a body thump under a tearing shriek.
-static func screech() -> AudioStreamWAV:
+static func screech() -> AudioStream:
+	if ResourceLoader.exists("res://audio/jumpscare/ant.ogg"):
+		return load("res://audio/jumpscare/ant.ogg")
 	if _cache.has("screech"):
 		return _cache["screech"]
 	var length := 1.6
@@ -122,6 +131,104 @@ static func screech() -> AudioStreamWAV:
 		out[i] = tanh((saw * 0.5 + ring * 0.6 + hiss * 0.35) * 2.2) * env * 0.75 + thump * 0.85
 	_cache["screech"] = _wav(out, false)
 	return _cache["screech"]
+
+
+static func step_tile() -> AudioStream:
+	return _file_or("res://audio/footsteps/tile.ogg", _step(11, 1800.0, 0.55))
+
+
+static func step_grass() -> AudioStream:
+	return _file_or("res://audio/footsteps/grass.ogg", _step(12, 700.0, 0.35))
+
+
+static func heartbeat() -> AudioStream:
+	return _file_or("res://audio/heartbeat.ogg", _heartbeat())
+
+
+static func music() -> AudioStream:
+	return _file_or("res://audio/music/ambience.ogg", _drone())
+
+
+static func spider_screech() -> AudioStream:
+	return _file_or("res://audio/jumpscare/spider.ogg", _spider())
+
+
+static func _file_or(path: String, fallback: AudioStream) -> AudioStream:
+	if ResourceLoader.exists(path):
+		return load(path)
+	return fallback
+
+
+# A short thud. `tone` is the brightness: tile is hard, grass is dull.
+static func _step(seed_value: int, tone: float, brightness: float) -> AudioStream:
+	var key := "step:%d" % seed_value
+	if _cache.has(key):
+		return _cache[key]
+	var length := 0.09
+	var out := PackedFloat32Array()
+	out.resize(int(length * RATE))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
+	for i in out.size():
+		var t := float(i) / RATE
+		var env := exp(-t * 48.0)
+		var noise := (rng.randf() - 0.5) * 2.0
+		var body := sin(TAU * tone * t) * brightness
+		out[i] = (noise * 0.55 + body) * env * 0.45
+	_cache[key] = _wav(out, false)
+	return _cache[key]
+
+
+static func _heartbeat() -> AudioStream:
+	if _cache.has("heart"):
+		return _cache["heart"]
+	var length := 1.15
+	var out := PackedFloat32Array()
+	out.resize(int(length * RATE))
+	for hit: float in [0.02, 0.18]:
+		for i in out.size():
+			var t := float(i) / RATE - hit
+			if t < 0.0 or t > 0.16:
+				continue
+			var env := sin(PI * clampf(t / 0.16, 0.0, 1.0))
+			out[i] += sin(TAU * 48.0 * t) * env * env * 0.7
+	_cache["heart"] = _wav(out, true)
+	return _cache["heart"]
+
+
+# Quiet drone. Every tone completes a whole number of cycles so the loop has no click.
+static func _drone() -> AudioStream:
+	if _cache.has("drone"):
+		return _cache["drone"]
+	var length := 16.0
+	var out := PackedFloat32Array()
+	out.resize(int(length * RATE))
+	for i in out.size():
+		var t := float(i) / RATE
+		var s := 0.30 * sin(TAU * 40.0 * t) + 0.18 * sin(TAU * 43.0 * t + 0.4)
+		s += 0.10 * sin(TAU * 80.0 * t) + 0.06 * sin(TAU * 20.0 * t)
+		s += 0.04 * sin(TAU * 0.125 * t)
+		out[i] = s * 0.35
+	_cache["drone"] = _wav(out, true)
+	return _cache["drone"]
+
+
+static func _spider() -> AudioStream:
+	if _cache.has("spider"):
+		return _cache["spider"]
+	var length := 1.3
+	var out := PackedFloat32Array()
+	out.resize(int(length * RATE))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 9
+	for i in out.size():
+		var t := float(i) / RATE
+		var env := minf(t / 0.015, 1.0) * exp(-t * 1.1)
+		var hiss := (rng.randf() - 0.5) * 2.0
+		var tone := sin(TAU * lerpf(900.0, 220.0, t / length) * t)
+		out[i] = tanh((hiss * 0.7 + tone) * env * 2.4) * 0.8
+	_cache["spider"] = _wav(out, false)
+	return _cache["spider"]
 
 
 static func _wav(samples: PackedFloat32Array, loop: bool) -> AudioStreamWAV:

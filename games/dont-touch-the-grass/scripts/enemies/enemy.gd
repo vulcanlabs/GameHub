@@ -25,6 +25,8 @@ var reach_height := 0.9         # it cannot grab feet higher than this above the
 var head_distance := 1.0        # body centre to head, along its forward direction
 var mouth_offset := Vector3(0.0, 0.45, -1.3)   # the point that ends up in front of the camera in a jumpscare
 var jumpscare_distance := 0.45
+var body_height := 0.75
+var body_radius := 0.35
 
 var state: State = State.ROAMING
 var frozen := false             # true during a jumpscare: no thinking, no moving
@@ -45,16 +47,16 @@ func _ready() -> void:
 	collision_mask = 2         # World only: it passes under platforms and does not push the player
 	var shape := CollisionShape3D.new()
 	var sphere := SphereShape3D.new()
-	sphere.radius = 0.35
+	sphere.radius = body_radius
 	shape.shape = sphere
-	shape.position.y = 0.4
+	shape.position.y = body_radius
 	add_child(shape)
 
 	nav = NavigationAgent3D.new()
 	nav.path_desired_distance = 0.6
 	nav.target_desired_distance = 0.4
 	nav.radius = 0.5
-	nav.height = 0.75
+	nav.height = body_height
 	add_child(nav)
 
 	_voice = AudioStreamPlayer3D.new()
@@ -100,6 +102,10 @@ func reset_to_home() -> void:
 	state = State.ROAMING
 	_roam_wait = 1.0
 	state_changed.emit(self, state)
+
+
+func scare_stream() -> AudioStream:
+	return SoundBank.screech()
 
 
 # World position of the face. The jumpscare puts this point in front of the camera.

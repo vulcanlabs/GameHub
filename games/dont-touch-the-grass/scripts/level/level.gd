@@ -6,15 +6,16 @@ const GrassFieldScript = preload("res://scripts/level/grass_field.gd")
 const GrassHazardScript = preload("res://scripts/level/grass_hazard.gd")
 const PlatformScript = preload("res://scripts/level/platform.gd")
 const FinishZoneScript = preload("res://scripts/level/finish_zone.gd")
+const PortalScript = preload("res://scripts/level/portal.gd")
 
-# Add new monster kinds here (the spider goes in this list later).
 const ENEMY_TYPES := {
 	"ant": preload("res://scripts/enemies/ant.gd"),
+	"spider": preload("res://scripts/enemies/spider.gd"),
 }
 
 # Monsters keep this far from walls and poles, and need this much headroom to walk under a platform.
 const NAV_AGENT_RADIUS := 0.5
-const NAV_AGENT_HEIGHT := 0.75
+const NAV_AGENT_HEIGHT := 0.95
 
 var data: Dictionary
 var room: Node3D
@@ -40,6 +41,21 @@ func build(level_data: Dictionary) -> void:
 		platform.build(entry["at"], entry["size"], entry["top"])
 		platforms.append(platform)
 		blockers.append(platform.pole_rect())
+		if entry.has("move"):
+			var move: Dictionary = entry["move"]
+			var axis := Vector3(1.0, 0.0, 0.0) if move["axis"] == "x" else Vector3(0.0, 0.0, 1.0)
+			platform.set_motion(axis, move["distance"], move["seconds"])
+
+	var portals: Array = data.get("portals", [])
+	for i in range(0, portals.size(), 2):
+		if i + 1 >= portals.size():
+			break
+		var a: Area3D = _portal(portals[i], Color(0.95, 0.45, 0.12))
+		var b: Area3D = _portal(portals[i + 1], Color(0.95, 0.45, 0.12))
+		a.partner = b
+		b.partner = a
+		a.destination = portals[i + 1]["to"]
+		b.destination = portals[i]["to"]
 
 	var area: Rect2 = room.floor_rect()
 	grass = GrassFieldScript.new()
@@ -60,6 +76,13 @@ func build(level_data: Dictionary) -> void:
 	finish.build(minf(last.size.x, last.size.y) * 0.6)
 
 	_bake_navigation(area, blockers)
+
+
+func _portal(entry: Dictionary, color: Color) -> Area3D:
+	var pad: Area3D = PortalScript.new()
+	add_child(pad)
+	pad.build(entry["at"], color)
+	return pad
 
 
 # Where the player's feet go at the start of the level.

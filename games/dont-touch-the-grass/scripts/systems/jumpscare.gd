@@ -10,8 +10,8 @@ extends Node
 
 const SoundBank = preload("res://scripts/systems/sound_bank.gd")
 
-const TURN_TIME := 0.16
-const LUNGE_TIME := 0.20
+const TURN_TIME := 0.12
+const LUNGE_TIME := 0.16
 const BITE_TIME := 0.80
 const BLACK_TIME := 0.55
 const PUNCH_IN := 32.0   # degrees the lens narrows during the lunge
@@ -34,6 +34,8 @@ func play(player: CharacterBody3D, enemy: CharacterBody3D, hud: CanvasLayer) -> 
 	running = true
 	player.lock()
 	enemy.begin_attack()
+	_sound.stream = enemy.scare_stream()
+	_sound.volume_db = 1.5
 	_sound.play()
 	var cam: Camera3D = player.cam
 	var base_fov := cam.fov
@@ -74,7 +76,7 @@ func play(player: CharacterBody3D, enemy: CharacterBody3D, hud: CanvasLayer) -> 
 	while t < 1.0:
 		await get_tree().process_frame
 		t = minf(t + get_process_delta_time() / BITE_TIME, 1.0)
-		var shake := 0.07 * (1.0 - t * 0.5)
+		var shake := 0.11 * (1.0 - t * 0.45)
 		cam.h_offset = _rng.randf_range(-shake, shake)
 		cam.v_offset = _rng.randf_range(-shake, shake)
 		cam.rotation.z = _rng.randf_range(-shake, shake)

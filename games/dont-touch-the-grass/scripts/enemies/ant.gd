@@ -9,6 +9,7 @@ extends "res://scripts/enemies/enemy.gd"
 
 const Materials = preload("res://scripts/materials.gd")
 
+const BODY_SCALE := 1.22
 const HIP_HEIGHT := 0.40
 const LEG_SWING := 0.42        # radians each leg sweeps forward and back
 const LEG_LIFT := 0.24         # radians a leg rises while swinging forward
@@ -46,11 +47,15 @@ func _init() -> void:
 	roam_speed = 1.5
 	chase_speed = 6.0
 	catch_radius = 1.1
-	head_distance = 1.0
-	# The point between the jaw hinges, and how far from the lens it stops. At 1.1 m the head and the open jaws
-	# fill the picture; any closer and the camera ends up between the jaws, looking at nothing.
-	mouth_offset = Vector3(0.0, 0.48, -1.25)
-	jumpscare_distance = 1.1
+	head_distance = 1.15
+	body_height = 0.90
+	body_radius = 0.46
+	catch_radius = 1.25
+	reach_height = 1.0
+	# The point between the jaw hinges, and how far from the lens it stops.
+	# Scaled with the body. Any closer and the camera ends up between the jaws.
+	mouth_offset = Vector3(0.0, 0.48, -1.25) * BODY_SCALE
+	jumpscare_distance = 1.15
 
 
 func begin_attack() -> void:
@@ -71,7 +76,7 @@ func _build_model() -> void:
 	_sphere.height = 2.0
 	_sphere.radial_segments = 20
 	_sphere.rings = 10
-	_shell = Materials.chitin(Color(0.46, 0.07, 0.03), 0.30)
+	_shell = Materials.chitin(Color(0.30, 0.045, 0.018), 0.34)
 	_shell_dark = Materials.chitin(Color(0.21, 0.035, 0.02), 0.24)
 	_limb_mat = Materials.chitin(Color(0.13, 0.03, 0.02), 0.34)
 	_black = Materials.chitin(Color(0.03, 0.014, 0.01), 0.14)
@@ -89,6 +94,7 @@ func _build_model() -> void:
 	for pair_index in LEG_PAIRS.size():
 		_build_leg(pair_index, 1.0)
 		_build_leg(pair_index, -1.0)
+	_model.scale = Vector3.ONE * BODY_SCALE
 
 
 func _build_body() -> void:

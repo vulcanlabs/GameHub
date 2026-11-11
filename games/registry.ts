@@ -47,7 +47,7 @@ export const GAMES: GameMeta[] = [
     emoji: "🌱",
     genre: "Parkour",
     blurb:
-      "First-person Backrooms horror parkour. Stay on the platforms. A giant ant owns the grass.",
+      "First-person Backrooms horror parkour across 50 levels. Stay on the platforms. The grass belongs to giant ants, and a spider joins from level 25.",
     version: "v0.1.0",
     runtime: "desktop",
   },

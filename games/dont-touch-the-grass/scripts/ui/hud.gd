@@ -4,8 +4,12 @@ extends CanvasLayer
 
 var _level_label: Label
 var _hint: Label
+var _countdown: Label
+var _saved: Label
 var _black: ColorRect
 var _red: ColorRect
+var _screen: ShaderMaterial
+var _danger := 0.0
 var _fade: Tween
 var _flash: Tween
 
@@ -18,6 +22,7 @@ func _ready() -> void:
 	var finish_mat := ShaderMaterial.new()
 	finish_mat.shader = load("res://shaders/screen.gdshader")
 	finish.material = finish_mat
+	_screen = finish_mat
 	add_child(finish)
 
 	var font := SystemFont.new()
@@ -35,7 +40,7 @@ func _ready() -> void:
 	add_child(_level_label)
 
 	_hint = Label.new()
-	_hint.text = "CLICK TO PLAY\n\nWASD move    SHIFT sprint    SPACE jump    ESC release mouse    F11 fullscreen"
+	_hint.text = "CLICK TO PLAY\n\nWASD move    SHIFT sprint    SPACE jump    ESC pause    F11 fullscreen"
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hint.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	_hint.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -47,6 +52,27 @@ func _ready() -> void:
 	_hint.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
 	add_child(_hint)
 
+	_countdown = Label.new()
+	_countdown.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_countdown.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_countdown.offset_top = 18
+	_countdown.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_countdown.add_theme_font_override("font", font)
+	_countdown.add_theme_font_size_override("font_size", 28)
+	_countdown.add_theme_color_override("font_color", Color(0.95, 0.25, 0.18))
+	_countdown.visible = false
+	add_child(_countdown)
+
+	_saved = Label.new()
+	_saved.text = "RUN SAVED"
+	_saved.set_anchors_preset(Control.PRESET_CENTER)
+	_saved.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_saved.add_theme_font_override("font", font)
+	_saved.add_theme_font_size_override("font_size", 36)
+	_saved.add_theme_color_override("font_color", Color(0.93, 0.88, 0.66))
+	_saved.visible = false
+	add_child(_saved)
+
 	_red = _overlay(Color(0.7, 0.0, 0.0, 0.0))
 	_black = _overlay(Color(0, 0, 0, 0))
 
@@ -57,6 +83,28 @@ func set_level(number: int, total: int) -> void:
 
 func level_text() -> String:
 	return _level_label.text
+
+
+func set_danger(amount: float) -> void:
+	_danger = amount
+	_screen.set_shader_parameter("danger", amount)
+
+
+func danger() -> float:
+	return _danger
+
+
+# seconds < 0 hides it.
+func set_countdown(seconds: float) -> void:
+	_countdown.visible = seconds >= 0.0
+	if seconds >= 0.0:
+		_countdown.text = "RESET IN %d" % ceili(seconds)
+
+
+func show_saved() -> void:
+	_saved.visible = true
+	var timer := get_tree().create_timer(2.0)
+	timer.timeout.connect(func() -> void: _saved.visible = false, CONNECT_ONE_SHOT)
 
 
 func show_hint(visible_now: bool) -> void:

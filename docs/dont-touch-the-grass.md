@@ -1,8 +1,8 @@
 # Don’t Touch the Grass: Backrooms
 
-First-person horror parkour. The player crosses low platforms in a Backrooms hall. The floor is grass, and a giant ant hunts anyone who touches it. Level 1 of a planned 50 exists.
+First-person horror parkour. The player crosses low platforms in a Backrooms hall. The floor is grass. Giant ants hunt anyone who touches it, and a spider joins from level 25. There are 50 levels.
 
-The game you run is Godot 4.7 (Forward+): [`games/dont-touch-the-grass`](../games/dont-touch-the-grass). It starts fullscreen. It does not poll `GET /api/v1/devices/live` yet, so a hub link code is unused. Gifts are not applied. Settings stay `{ version: 1 }`.
+The game you run is Godot 4.7 (Forward+): [`games/dont-touch-the-grass`](../games/dont-touch-the-grass). It starts fullscreen. It does not poll `GET /api/v1/devices/live` yet, so a hub link code is unused. Gifts are not applied. Settings stay `{ version: 1 }`. Stream keys F1–F9 are ordinary Godot input actions and work with no TikTok connection.
 
 Run commands, the test command, the placeholder list, and narrator recording names are in the game's [README](../games/dont-touch-the-grass/README.md).
 
@@ -13,10 +13,11 @@ Run commands, the test command, the placeholder list, and narrator recording nam
 | Click | Start, capture the mouse |
 | WASD | Walk at 4.5 m/s |
 | Shift | Sprint at 7 m/s |
-| Space | Jump, about 1.25 m high |
+| Space | Jump. The playtest measured an apex of about 1.58 m |
 | Mouse | Look |
-| Esc | Release the mouse |
+| Esc | Pause, release the mouse, field of view 60–110. Esc or Resume captures the mouse again |
 | F11 | Leave or return to fullscreen |
+| F1–F9 | Stream actions. See the game README |
 
 ## Chase rules
 
@@ -30,26 +31,38 @@ Run commands, the test command, the placeholder list, and narrator recording nam
 
 Touching the grass sets every monster in range to CHASING and stops the timer. Landing on a platform sets them to SEARCHING and starts the timer. When it runs out they return to ROAMING. "On a platform" means standing on a floor while not inside the grass volume, so it needs no per-platform triggers.
 
-A catch needs three things: the monster is CHASING, the player has not reached a platform since touching the grass, and the monster is within reach. Platform tops are above its reach, and the navigation map excludes them, so it can walk under a platform and never onto one.
+A catch needs three things: the monster is CHASING, the player has not reached a platform since touching the grass, and the monster is within reach. Platform tops are about 1.15 m to 1.38 m. The navigation agent height is 0.95 m, so a monster can walk under a platform and never onto one. Do not scale a monster above that clearance.
 
-## Level
+While the player is in danger, the screen gets a red edge vignette and a heartbeat. The centre stays clear. Both stop on a safe landing.
 
-A level is a dictionary in `scripts/level/level_data.gd`: room size, platforms in route order (first is the start, last holds the finish pad), inner walls, columns, ceiling lights, monsters. `scripts/level/level.gd` builds the scene from it and bakes the navigation map at load. Nothing is placed in the editor.
+## Levels
 
-Level 1 is a 40 m by 26 m hall with 12 platforms, tops between 1.0 m and 1.6 m. The first four are low enough to climb back onto from the grass. The rest are not. Gaps are 1.4 m to 2.5 m. A walking jump covers about 2.2 m, a sprinting jump about 3.4 m.
+A level is a dictionary in `scripts/level/level_data.gd`: room size, platforms in route order (first is the start, last holds the finish pad), inner walls, columns, ceiling lights, monsters, optional sliding platforms, optional portal pairs. `scripts/level/level.gd` builds the scene from it and bakes the navigation map at load. Nothing is placed in the editor.
 
-Physics layers: 1 player, 2 world (floor, walls, poles), 3 safe platforms, 4 monsters, 5 triggers (grass, finish pad).
+Level 1 is a hand-built 40 m by 26 m hall with 12 platforms. Levels 2–50 are generated from a fixed seed (`number * 7919`). Each has 9 to 11 platforms in a 50 m by 36 m hall, all low enough to climb from the grass. From level 11 some pads slide. From level 16 a corner teleporter can link two pads. Generated levels currently leave `walls` and `columns` empty. If 40 seeds fail the gap checks, that level falls back to a straight row and prints a warning. The last playtest did not hit that warning.
+
+Enemy counts: one ant from the start, a second ant from level 18, a spider (first in the list) from level 25, a third ant from level 36.
+
+Physics layers: 1 player, 2 world (floor, walls, poles), 3 safe platforms, 4 monsters, 5 triggers (grass, finish pad, portals).
 
 ## Death and finish
 
-`scripts/main.gd` hears `caught_player` from a monster, runs `scripts/systems/jumpscare.gd`, then resets the chase, sends monsters home, and puts the player at the start of the level. There is no health and no checkpoint. Catch reports during the jumpscare are ignored.
+`scripts/main.gd` hears `caught_player` from a monster, runs `scripts/systems/jumpscare.gd`, then resets the chase, sends monsters home, and puts the player at the start of the current level. There is no health and no checkpoint. Catch reports during the jumpscare are ignored.
 
-The finish pad fires once. `main.gd` emits `level_completed(number)` and loads the next level if `level_data.gd` has one. With only Level 1, it restarts Level 1.
+The jumpscare locks movement, turns the monster's face into the camera, punches the field of view, plays that monster's screech, then respawns. The spider uses the same scene with its own body and `audio/jumpscare/spider.ogg` (synthesized until a file exists).
+
+The finish pad fires once. `main.gd` emits `level_completed(number)` and loads the next level. Level 50 has no next level, so the pad restarts level 50.
+
+## Stream keys
+
+Bound at startup in `main.gd`, physical F1–F9, echo ignored, ignored while paused or while a death or finish is playing. F7 shows `RESET IN n` and does not stack. F9 clears it and shows `RUN SAVED` for 2 seconds. F8 and a finished countdown call `reset_run()`, which clears deaths and completed levels and loads level 1.
 
 ## Narrator
 
-`scripts/systems/narrator.gd` takes event names: `intro`, `tutorial_move`, `tutorial_jump`, `grass`, `death`, `death_many`, `level_complete`. Each event has several lines, a priority, and a cooldown in `narrator_lines.gd`. One line plays at a time. A higher priority cuts off a lower one. A recording at `audio/narrator/<line id>.ogg` is used when present. Otherwise the line goes to the operating system's text-to-speech. No recordings exist yet.
+`scripts/systems/narrator.gd` takes event names: `intro`, `tutorial_move`, `tutorial_jump`, `grass`, `death`, `death_many`, `level_complete`, `milestone_10`, `milestone_25`, `milestone_50`, `reset`. Each event has several lines, a priority, and a cooldown in `narrator_lines.gd`. One line plays at a time. A higher priority cuts off a lower one. A recording at `audio/narrator/<line id>.ogg` is used when present. Otherwise the line goes to the operating system's text-to-speech. No recordings exist yet.
 
-## Picture
+## Picture and sound
 
-Everything is generated by code: there are no texture, model, or audio files. The 3D picture is drawn at 1080 lines at most and scaled to the window (`MAX_RENDER_HEIGHT` in `main.gd`), because a 4K or Retina panel otherwise costs four times the pixels. Grass is a `MultiMesh` per 4 m square, with a thinner copy for squares more than 13 m from the camera. Ceiling lights are shadowed spotlights, kept narrow so few overlap.
+Everything is generated by code: there are no texture, model, or audio files. Grass is a muted yellow-green with straw tips, over a soil-coloured ground. It does not glow. Platform tops are worn beige ceramic tiles with grout, stains, and hairline cracks. The 3D picture is drawn at 1080 lines at most and scaled to the window (`MAX_RENDER_HEIGHT` in `main.gd`). Grass is a `MultiMesh` per 4 m square, with a thinner copy for squares more than 13 m from the camera. Ceiling lights are shadowed spotlights, kept narrow so few overlap.
+
+Footsteps, heartbeat, music, and screeches are short synthesized clips in `scripts/systems/sound_bank.gd`. Music plays at -24 dB. A real file at the path named in that script replaces the clip.

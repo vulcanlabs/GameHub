@@ -1,11 +1,13 @@
-# First-person player: look, walk, sprint, jump.
+# First-person player: look, walk, sprint, jump, footsteps.
 # There is no health. A monster that catches the player on the grass kills at once (see systems/jumpscare.gd).
 extends CharacterBody3D
 
+const SoundBank = preload("res://scripts/systems/sound_bank.gd")
+
 const WALK_SPEED := 4.5
 const SPRINT_SPEED := 7.0
-const JUMP_VELOCITY := 7.0     # with GRAVITY 20 the jump peaks 1.22 m up and lasts 0.7 s
-const GRAVITY := 20.0
+const JUMP_VELOCITY := 8.5     # with GRAVITY 24 the jump peaks about 1.50 m and stays in the air about 0.7 s
+const GRAVITY := 24.0
 const GROUND_ACCEL := 60.0
 const GROUND_BRAKE := 70.0     # high, so the player stops on the spot instead of sliding off a platform
 const AIR_ACCEL := 22.0
@@ -13,15 +15,18 @@ const COYOTE_TIME := 0.1       # jump still works this long after walking off an
 const JUMP_BUFFER := 0.12      # a jump pressed this long before landing still counts
 const MOUSE_SENS := 0.0022
 const EYE_HEIGHT := 1.62
-const BASE_FOV := 80.0
-const SPRINT_FOV := 86.0
+const DEFAULT_FOV := 80.0
 
 var require_mouse_capture := true
 var locked := false            # true during a jumpscare or level change: no input, no physics
 var sprinting := false
 var yaw := 0.0
 var pitch := 0.0
+var fov := DEFAULT_FOV         # the pause menu writes this
+var steps_played := 0
 var cam: Camera3D
+var _steps: AudioStreamPlayer
+var _step_wait := 0.0
 var _coyote := 0.0
 var _buffer := 0.0
 
@@ -39,11 +44,14 @@ func _ready() -> void:
 	cap.position.y = 0.9
 	add_child(cap)
 	cam = Camera3D.new()
-	cam.fov = BASE_FOV
+	cam.fov = fov
 	cam.near = 0.05
 	cam.position = Vector3(0, EYE_HEIGHT, 0)
 	add_child(cam)
 	cam.make_current()
+	_steps = AudioStreamPlayer.new()
+	_steps.volume_db = -14.0
+	add_child(_steps)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -59,7 +67,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	if locked:
 		return
-	var target := SPRINT_FOV if sprinting else BASE_FOV
+	var target := fov + 6.0 if sprinting else fov
 	cam.fov = lerpf(cam.fov, target, minf(delta * 8.0, 1.0))
 
 
@@ -93,6 +101,7 @@ func _physics_process(delta: float) -> void:
 	velocity.x = flat.x
 	velocity.z = flat.z
 	move_and_slide()
+	_footstep(delta)
 
 
 func set_look(new_yaw: float, new_pitch: float) -> void:
@@ -119,7 +128,36 @@ func lock() -> void:
 
 func unlock() -> void:
 	locked = false
-	cam.fov = BASE_FOV
+	cam.fov = fov
+
+
+func set_fov(value: float) -> void:
+	fov = clampf(value, 60.0, 110.0)
+	cam.fov = fov
+
+
+# One player, so a new step cuts the previous sample off instead of stacking.
+func _footstep(delta: float) -> void:
+	var moving := Vector2(velocity.x, velocity.z).length() > 0.4
+	if locked or not is_on_floor() or not moving:
+		_step_wait = 0.0
+		return
+	_step_wait -= delta
+	if _step_wait > 0.0:
+		return
+	# Sprint steps come closer together. Standing and jumping never get here.
+	_step_wait = 0.24 if sprinting else 0.48
+	_steps.stream = SoundBank.step_tile() if _on_tile() else SoundBank.step_grass()
+	_steps.play()
+	steps_played += 1
+
+
+func _on_tile() -> bool:
+	for i in get_slide_collision_count():
+		var body := get_slide_collision(i).get_collider()
+		if body is Node and (body as Node).is_in_group("safe_platform"):
+			return true
+	return false
 
 
 func _has_control() -> bool:

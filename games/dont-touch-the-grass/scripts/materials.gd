@@ -70,12 +70,23 @@ static func ceiling() -> ShaderMaterial:
 	return shader("res://shaders/ceiling.gdshader", "ceiling")
 
 
+# Old floor tiles for platform tops. Same family as the ceiling, with its own dirt.
+static func floor_tile() -> ShaderMaterial:
+	var mat := shader("res://shaders/floor_tile.gdshader", "floor_tile")
+	mat.set_shader_parameter("noise", noise(21, 0.08, false, 4.0, 5))
+	return mat
+
+
 static func grass_blade() -> ShaderMaterial:
-	return shader("res://shaders/grass_blade.gdshader", "grass_blade")
+	var mat := shader("res://shaders/grass_blade.gdshader", "grass_blade")
+	mat.set_shader_parameter("noise", noise(31, 0.16, false, 4.0, 4))
+	return mat
 
 
 static func grass_ground() -> ShaderMaterial:
-	return shader("res://shaders/grass_ground.gdshader", "grass_ground")
+	var mat := shader("res://shaders/grass_ground.gdshader", "grass_ground")
+	mat.set_shader_parameter("noise", noise(33, 0.07, false, 4.0, 4))
+	return mat
 
 
 # Worn concrete for platform slabs.

@@ -1,8 +1,8 @@
 # Don’t Touch the Grass: Backrooms
 
-First-person horror parkour in the Backrooms. Cross the platforms. The grass belongs to a giant ant.
+First-person horror parkour in the Backrooms. Cross 50 levels of platforms. The grass belongs to giant ants. A spider joins from level 25.
 
-Godot 4.7 project, Forward+ renderer. It opens fullscreen into Level 1. Level 1 is the only level so far. The game does not use a hub link code yet, and gift actions are not wired.
+Godot 4.7 project, Forward+ renderer. It opens fullscreen into Level 1. The game does not use a hub link code yet, and gift actions are not wired. TikTok can drive the stream keys below with ordinary keyboard input. The keys also work with no stream running.
 
 ## Controls
 
@@ -11,19 +11,37 @@ Godot 4.7 project, Forward+ renderer. It opens fullscreen into Level 1. Level 1 
 - Mouse to look
 - Space to jump
 - Shift to sprint
-- Esc to release the mouse
+- Esc to pause, release the mouse, and change field of view (60–110). Esc or Resume captures the mouse again
 - F11 to leave or return to fullscreen
 
-The keys are input actions in `project.godot` (`move_forward`, `move_back`, `move_left`, `move_right`, `jump`, `sprint`). Rebind them in Godot under Project > Project Settings > Input Map.
+Movement keys are input actions in `project.godot` (`move_forward`, `move_back`, `move_left`, `move_right`, `jump`, `sprint`). The stream keys are added when the game starts, so an export has them too:
+
+| Key | Action |
+| --- | --- |
+| F1 | Shove the player backward. Collision still applies. |
+| F2 | Next level |
+| F3 | Previous level |
+| F4 | Five levels forward |
+| F5 | Five levels back |
+| F6 | Spawn one more monster (a spider from level 25, otherwise an ant) |
+| F7 | Start a 60 second countdown. At zero the run returns to level 1. A second press does not restart the timer. |
+| F8 | Return to level 1 immediately |
+| F9 | Cancel the F7 countdown and stay on the current level |
+
+Level numbers stay between 1 and 50.
 
 ## Rules
 
-- Platforms are safe. Each stands on one pole.
-- Touching the grass starts a chase. The ant kills on contact while you are on the grass.
-- Reach a platform and the ant keeps hunting under you for 5 seconds, then goes back to roaming. It cannot climb, jump, or attack you up there.
-- Touching the grass again cancels the countdown. It restarts at your next landing.
-- There is no health. Being caught plays the jumpscare and puts you back at the start of the level.
-- The glowing pad on the last platform ends the level.
+- Platforms are safe. Each stands on one pole. Tops stay low enough to jump back up from the grass.
+- Touching the grass starts a chase and a red edge vignette with a heartbeat. The centre of the screen stays clear. Both stop when you are safe.
+- The monster kills on contact while you are on the grass. It cannot attack you on a platform.
+- Reach a platform and the monster keeps hunting under you for 5 seconds, then goes back to roaming. Touching the grass again restarts that timer.
+- There is no health and no checkpoint. Being caught plays a jumpscare and puts you back at the start of the current level.
+- The glowing pad on the last platform loads the next level and updates the counter. Finishing level 50 restarts level 50.
+
+## Levels
+
+Level 1 is a hand-built 40 m by 26 m hall. Levels 2–50 are generated from a fixed seed, so each one is the same every launch and different from its neighbours. Bands: 1–10 easy, 11–24 harder gaps and sliding platforms, 16+ optional corner teleporters, 25–35 a spider plus ants, 36–50 the narrowest pads and a third ant. Generated halls do not place inner walls or columns.
 
 ## Run
 
@@ -35,13 +53,15 @@ Open this folder in Godot 4.7 and press F5, or:
 
 ## Test
 
-The automatic test presses the real input actions, jumps the whole route, and checks the chase rules. It prints one `PASS` or `FAIL` line per check and ends with `playtest ok` or `playtest fail`.
+The automatic test presses the real input actions, jumps every level, and checks the chase rules, pause menu, and F1–F9. It prints one `PASS` or `FAIL` line per check and ends with `playtest ok` or `playtest fail`.
 
 ```bash
 /Applications/Godot.app/Contents/MacOS/Godot --headless --fixed-fps 60 --path games/dont-touch-the-grass -- --playtest
 ```
 
-It cannot judge how the game looks, sounds, or feels. Screenshots plus a frame rate reading (needs a real window):
+Do not pass a small `--quit-after`. In Godot 4.7 that number is frames, and the test quits before it finishes.
+
+The test cannot judge how the game looks, sounds, or feels. Screenshots plus a frame rate reading (needs a real window):
 
 ```bash
 /Applications/Godot.app/Contents/MacOS/Godot --path games/dont-touch-the-grass -- --shots=/tmp/grass-shots
@@ -49,44 +69,49 @@ It cannot judge how the game looks, sounds, or feels. Screenshots plus a frame r
 
 ## Placeholders
 
-There are no asset files in this project. Everything below is generated by code and is a stand-in for real artwork.
+There are no art or audio files in this project. Everything below is generated by code and is a stand-in.
 
 | Part | What it is now | Replace in |
 | --- | --- | --- |
-| Ant model and animation | Stretched spheres and cylinders, legs driven by sine waves | `scripts/enemies/ant.gd` |
-| Wallpaper, ceiling, grass, concrete, steel | Shaders and noise textures | `shaders/`, `scripts/materials.gd` |
-| Hum, scratching, chase sting, ant chitter, attack screech | Synthesized tones | `scripts/systems/sound_bank.gd` |
+| Ant and spider models | Spheres and cylinders, legs driven by sine waves | `scripts/enemies/ant.gd`, `scripts/enemies/spider.gd` |
+| Wallpaper, ceiling, grass, dirty floor tiles, steel | Shaders and noise textures | `shaders/`, `scripts/materials.gd` |
+| Hum, footsteps, heartbeat, music, screeches | Synthesized tones | `scripts/systems/sound_bank.gd` |
 | Narrator voice | The operating system's text-to-speech | see below |
+
+Drop a real file at the path named in `sound_bank.gd` and the game uses it:
+
+`audio/footsteps/tile.ogg`, `audio/footsteps/grass.ogg`, `audio/music/ambience.ogg`, `audio/heartbeat.ogg`, `audio/jumpscare/ant.ogg`, `audio/jumpscare/spider.ogg`
 
 ## Narrator recordings
 
 No recordings exist yet. Until they do, the narrator speaks through the operating system's text-to-speech voice. If the system has no voice, he is silent and the missing line is printed in the log. Text is never shown on screen in place of a voice.
 
-To add a recording, save it as `audio/narrator/<line id>.ogg` (or `.wav`, `.mp3`). The game plays the file instead of text-to-speech as soon as it exists. The line ids and their text are in `scripts/systems/narrator_lines.gd`:
+To add a recording, save it as `audio/narrator/<line id>.ogg` (or `.wav`, `.mp3`). The line ids are in `scripts/systems/narrator_lines.gd`:
 
-`intro_1`, `tutorial_move_1`, `tutorial_jump_1`, `grass_1`, `grass_2`, `grass_3`, `death_1`, `death_2`, `death_3`, `death_many_1`, `death_many_2`, `level_complete_1`, `level_complete_2`
+`intro_1`, `tutorial_move_1`, `tutorial_jump_1`, `grass_1`, `grass_2`, `grass_3`, `death_1`, `death_2`, `death_3`, `death_many_1`, `death_many_2`, `level_complete_1`, `level_complete_2`, `milestone_10_1`, `milestone_25_1`, `milestone_50_1`, `reset_1`
 
 ## Where things are
 
 | File | Job |
 | --- | --- |
-| `scripts/main.gd` | Starts everything. Death, respawn, level completion. |
-| `scripts/player.gd` | First-person controller. |
-| `scripts/level/level_data.gd` | The levels as plain data: room size, platforms, walls, lights, monsters. Add levels here. |
-| `scripts/level/level.gd` | Builds a level from that data and bakes the monsters' navigation map. |
-| `scripts/level/platform.gd` | One safe platform with its pole. |
+| `scripts/main.gd` | Starts everything. Death, respawn, level changes, pause, stream keys. |
+| `scripts/player.gd` | First-person controller and footsteps. |
+| `scripts/level/level_data.gd` | Level 1 by hand. Levels 2–50 from a fixed seed. |
+| `scripts/level/level.gd` | Builds a level and bakes the monsters' navigation map. |
+| `scripts/level/platform.gd` | One safe platform with its pole. Some slide. |
+| `scripts/level/portal.gd` | A corner teleporter pair, from level 16. |
 | `scripts/level/grass_hazard.gd` | Detects the player touching the grass. |
 | `scripts/level/grass_field.gd` | The grass you see. |
 | `scripts/level/finish_zone.gd` | The glowing finish pad. |
-| `scripts/level/backrooms_room.gd`, `ceiling_light.gd` | Walls, ceiling, lights, fog. |
 | `scripts/enemies/enemy.gd` | Shared monster brain: ROAMING, CHASING, SEARCHING. |
-| `scripts/enemies/ant.gd` | The ant's body and movement. |
-| `scripts/systems/chase_manager.gd` | The 5 second rule. One timer for all monsters. |
-| `scripts/systems/jumpscare.gd` | The death scene. |
+| `scripts/enemies/ant.gd`, `spider.gd` | Bodies and movement. |
+| `scripts/systems/chase_manager.gd` | The 5 second rule. |
+| `scripts/systems/jumpscare.gd` | The death scene. The spider uses its own sound and face. |
 | `scripts/systems/narrator.gd`, `narrator_lines.gd` | Narrator playback and his lines. |
-| `scripts/ui/hud.gd` | Level counter, screen fades. |
+| `scripts/ui/hud.gd` | Level counter, danger vignette, reset countdown. |
+| `scripts/ui/pause_menu.gd` | Esc pause and field of view. |
 | `scripts/dev/playtest.gd` | The automatic test. Not part of the game. |
 
 ## Settings
 
-The hub stores `{ version: 1 }`. No knobs yet.
+The hub stores `{ version: 1 }`. No knobs yet. Field of view lives only in the pause menu for the current session.

@@ -1,6 +1,7 @@
-# A safe platform: a concrete slab in a steel frame, held up by exactly one steel pole.
+# A safe platform: old ceiling tiles in a steel frame, held up by exactly one steel pole.
 # Monsters walk under the slab and around the pole. They cannot get on top.
-extends StaticBody3D
+# A moving platform slides on a straight line. AnimatableBody3D carries the player with it.
+extends AnimatableBody3D
 
 const Materials = preload("res://scripts/materials.gd")
 
@@ -13,6 +14,15 @@ var size := Vector2.ONE
 var top := 1.0
 var pole_radius := 0.09
 var poles: Array[StaticBody3D] = []
+func _init() -> void:
+	# Default sync would pull every platform back to where it entered the tree.
+	sync_to_physics = false
+
+
+var _home := Vector3.ZERO
+var _move_axis := Vector3.ZERO
+var _move_distance := 0.0
+var _move_seconds := 1.0
 
 
 func build(center: Vector2, p_size: Vector2, p_top: float) -> void:
@@ -24,7 +34,8 @@ func build(center: Vector2, p_size: Vector2, p_top: float) -> void:
 	add_to_group("safe_platform")
 	pole_radius = 0.12 if maxf(size.x, size.y) > 2.6 else 0.09
 
-	_box(self, Vector3(size.x, SLAB_THICKNESS, size.y), top - SLAB_THICKNESS * 0.5, Materials.concrete())
+	_box(self, Vector3(size.x, SLAB_THICKNESS, size.y), top - SLAB_THICKNESS * 0.5, Materials.floor_tile())
+	set_physics_process(false)
 	_box(self, Vector3(size.x + 0.06, FRAME_HEIGHT, size.y + 0.06), top - UNDERSIDE_DROP + FRAME_HEIGHT * 0.5, Materials.steel())
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()
@@ -42,6 +53,21 @@ func rect() -> Rect2:
 
 func top_center() -> Vector3:
 	return Vector3(position.x, top, position.z)
+
+
+# Slide back and forth. `axis` is in the floor plane. The walking height does not change.
+func set_motion(axis: Vector3, distance: float, seconds: float) -> void:
+	_home = global_position
+	_move_axis = axis.normalized()
+	_move_distance = distance
+	_move_seconds = maxf(seconds, 0.4)
+	sync_to_physics = true
+	set_physics_process(true)
+
+
+func _physics_process(_delta: float) -> void:
+	var phase := sin(float(Time.get_ticks_msec()) * 0.001 * TAU / _move_seconds)
+	global_position = _home + _move_axis * phase * _move_distance
 
 
 func pole_rect() -> Rect2:

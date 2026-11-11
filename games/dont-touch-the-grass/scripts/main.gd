@@ -12,6 +12,7 @@ const LevelData = preload("res://scripts/level/level_data.gd")
 const LevelScript = preload("res://scripts/level/level.gd")
 const PlayerScript = preload("res://scripts/player.gd")
 const HudScript = preload("res://scripts/ui/hud.gd")
+const PauseScript = preload("res://scripts/ui/pause_menu.gd")
 const ChaseScript = preload("res://scripts/systems/chase_manager.gd")
 const JumpscareScript = preload("res://scripts/systems/jumpscare.gd")
 const NarratorScript = preload("res://scripts/systems/narrator.gd")
@@ -28,6 +29,9 @@ var level_number := 1
 var deaths := 0
 var completed_levels: Array[int] = []
 var started := false
+var hold_level := false       # playtest: finishing does not advance
+var finish_fade := 1.2
+var _countdown := -1.0
 
 var level: Node3D
 var player: CharacterBody3D
@@ -37,12 +41,16 @@ var jumpscare: Node
 var narrator: Node
 var _sting: AudioStreamPlayer
 var _scratch: AudioStreamPlayer3D
+var _heart: AudioStreamPlayer
+var _danger := 0.0
+var pause_menu: CanvasLayer
 var _scratch_wait := 12.0
 var _stir := 0.0
 var _automated := false
 
 
 func _ready() -> void:
+	_bind_input()
 	var args := OS.get_cmdline_user_args()
 	var playtest := "--playtest" in args
 	var shots_dir := ""
@@ -53,6 +61,8 @@ func _ready() -> void:
 
 	hud = HudScript.new()
 	add_child(hud)
+	pause_menu = PauseScript.new()
+	add_child(pause_menu)
 	narrator = NarratorScript.new()
 	narrator.muted = _automated
 	add_child(narrator)
@@ -92,10 +102,6 @@ func _input(event: InputEvent) -> void:
 		if event.keycode == KEY_F11:
 			_toggle_fullscreen()
 			get_viewport().set_input_as_handled()
-		elif event.keycode == KEY_ESCAPE:
-			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-			hud.show_hint(true)
-			get_viewport().set_input_as_handled()
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -113,7 +119,49 @@ func begin() -> void:
 	narrator.say("tutorial_jump")
 
 
+func _unhandled_input(event: InputEvent) -> void:
+	if get_tree().paused or phase != Phase.PLAYING:
+		return
+	if not event.is_pressed() or event.is_echo():
+		return
+	if event.is_action_pressed("stream_push"):
+		_push_backward()
+	elif event.is_action_pressed("stream_level_up"):
+		go_to_level(level_number + 1)
+	elif event.is_action_pressed("stream_level_down"):
+		go_to_level(level_number - 1)
+	elif event.is_action_pressed("stream_level_up5"):
+		go_to_level(level_number + 5)
+	elif event.is_action_pressed("stream_level_down5"):
+		go_to_level(level_number - 5)
+	elif event.is_action_pressed("stream_add_monster"):
+		_add_monster()
+	elif event.is_action_pressed("stream_reset_arm"):
+		_arm_reset()
+	elif event.is_action_pressed("stream_reset_now"):
+		reset_run()
+	elif event.is_action_pressed("stream_reset_save"):
+		_save_run()
+
+
 func _process(delta: float) -> void:
+	if chase == null or level == null or get_tree().paused:
+		return
+	if _countdown >= 0.0:
+		_countdown -= delta
+		hud.set_countdown(_countdown)
+		if _countdown <= 0.0:
+			reset_run()
+			return
+	var want := 1.0 if chase.player_in_danger else 0.0
+	_danger = move_toward(_danger, want, delta * 3.0)
+	hud.set_danger(_danger)
+	if _danger > 0.04:
+		if not _heart.playing:
+			_heart.play()
+		_heart.volume_db = lerpf(-30.0, -12.0, _danger)
+	elif _heart.playing:
+		_heart.stop()
 	# The grass shivers while monsters are hunting and settles when they give up.
 	_stir = move_toward(_stir, 1.0 if chase.chase_active else 0.0, delta * 2.0)
 	level.grass.set_stir(_stir)
@@ -145,6 +193,8 @@ func _load_level(number: int) -> void:
 	for enemy in level.enemies:
 		enemy.caught_player.connect(_on_enemy_caught)
 	hud.set_level(number, LevelData.TOTAL_LEVELS)
+	if number == 10 or number == 25 or number == 50:
+		narrator.say("milestone_%d" % number)
 	_restart_level()
 
 
@@ -192,12 +242,11 @@ func _on_finish_reached() -> void:
 	print("level %d completed" % level_number)
 	narrator.say("level_complete")
 	player.lock()
-	await hud.fade_out(1.2)
-	if LevelData.has_level(level_number + 1):
-		_load_level(level_number + 1)
-	else:
-		# The next level is not built yet: play this one again.
+	await hud.fade_out(finish_fade)
+	if hold_level or not LevelData.has_level(level_number + 1):
 		_restart_level()
+	else:
+		_load_level(level_number + 1)
 	phase = Phase.PLAYING
 	hud.fade_in(0.8)
 
@@ -230,11 +279,109 @@ func _audio() -> void:
 	_scratch.attenuation_filter_cutoff_hz = 2400.0
 	add_child(_scratch)
 
+	var music := AudioStreamPlayer.new()
+	music.stream = SoundBank.music()
+	music.volume_db = -24.0
+	add_child(music)
+	music.play()
+
+	_heart = AudioStreamPlayer.new()
+	_heart.stream = SoundBank.heartbeat()
+	_heart.volume_db = -30.0
+	add_child(_heart)
+
 
 # Let go of the shared materials and sounds when the game closes, so Godot exits without leak warnings.
 func _exit_tree() -> void:
 	Materials.clear()
 	SoundBank.clear()
+
+
+func toggle_pause() -> void:
+	if get_tree().paused:
+		get_tree().paused = false
+		pause_menu.close()
+		if player.require_mouse_capture:
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+			hud.show_hint(false)
+	else:
+		get_tree().paused = true
+		pause_menu.open(player.fov)
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+
+func go_to_level(number: int) -> void:
+	var next := clampi(number, 1, LevelData.TOTAL_LEVELS)
+	if next == level_number or phase != Phase.PLAYING:
+		return
+	_load_level(next)
+
+
+func reset_run() -> void:
+	_countdown = -1.0
+	hud.set_countdown(-1.0)
+	deaths = 0
+	completed_levels.clear()
+	phase = Phase.PLAYING
+	_load_level(1)
+	narrator.say("reset")
+
+
+func _push_backward() -> void:
+	var back := player.global_transform.basis.z
+	back.y = 0.0
+	if back.length() < 0.01:
+		return
+	back = back.normalized()
+	player.velocity.x = back.x * 11.0
+	player.velocity.z = back.z * 11.0
+	player.velocity.y = 3.2
+
+
+func _add_monster() -> void:
+	var kind := "spider" if level_number >= 25 else "ant"
+	var back := player.global_position + player.global_transform.basis.z * 4.0
+	level.spawn_enemy(kind, Vector2(back.x, back.z), player, chase)
+	var enemy: CharacterBody3D = level.enemies[-1]
+	enemy.caught_player.connect(_on_enemy_caught)
+
+
+func _arm_reset() -> void:
+	if _countdown >= 0.0:
+		return
+	_countdown = 60.0
+	hud.set_countdown(_countdown)
+
+
+func _save_run() -> void:
+	if _countdown < 0.0:
+		return
+	_countdown = -1.0
+	hud.set_countdown(-1.0)
+	hud.show_saved()
+
+
+func _bind_input() -> void:
+	_bind("stream_push", KEY_F1)
+	_bind("stream_level_up", KEY_F2)
+	_bind("stream_level_down", KEY_F3)
+	_bind("stream_level_up5", KEY_F4)
+	_bind("stream_level_down5", KEY_F5)
+	_bind("stream_add_monster", KEY_F6)
+	_bind("stream_reset_arm", KEY_F7)
+	_bind("stream_reset_now", KEY_F8)
+	_bind("stream_reset_save", KEY_F9)
+
+
+func _bind(action: String, key: Key) -> void:
+	if not InputMap.has_action(action):
+		InputMap.add_action(action)
+	for existing in InputMap.action_get_events(action):
+		if existing is InputEventKey and (existing as InputEventKey).physical_keycode == key:
+			return
+	var ev := InputEventKey.new()
+	ev.physical_keycode = key
+	InputMap.action_add_event(action, ev)
 
 
 func _toggle_fullscreen() -> void:
