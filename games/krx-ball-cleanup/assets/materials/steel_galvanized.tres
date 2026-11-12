@@ -1,0 +1,17 @@
+[gd_resource type="StandardMaterial3D" load_steps=3 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/textures/Metal012/Metal012_2K-JPG_Color.jpg" id="1"]
+[ext_resource type="Texture2D" path="res://assets/textures/Metal012/Metal012_2K-JPG_NormalGL.jpg" id="2"]
+
+[resource]
+resource_name = "Galvanized duct steel: the brushed steel maps with a duller, even finish"
+albedo_color = Color(0.78, 0.8, 0.82, 1)
+albedo_texture = ExtResource("1")
+metallic = 0.85
+roughness = 0.46
+normal_enabled = true
+normal_texture = ExtResource("2")
+uv1_scale = Vector3(1.0, 1.0, 1.0)
+uv1_triplanar = true
+uv1_world_triplanar = true
+texture_filter = 5
