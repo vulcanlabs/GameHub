@@ -3,6 +3,7 @@ extends CanvasLayer
 
 var slider: HSlider
 var _value: Label
+var _look: OptionButton
 
 
 func _ready() -> void:
@@ -15,12 +16,12 @@ func _ready() -> void:
 	add_child(dim)
 
 	var panel := Panel.new()
-	panel.custom_minimum_size = Vector2(360, 220)
+	panel.custom_minimum_size = Vector2(380, 300)
 	panel.set_anchors_preset(Control.PRESET_CENTER)
-	panel.offset_left = -180
-	panel.offset_top = -110
-	panel.offset_right = 180
-	panel.offset_bottom = 110
+	panel.offset_left = -190
+	panel.offset_top = -150
+	panel.offset_right = 190
+	panel.offset_bottom = 150
 	add_child(panel)
 
 	var box := VBoxContainer.new()
@@ -29,7 +30,7 @@ func _ready() -> void:
 	box.offset_top = 20
 	box.offset_right = -24
 	box.offset_bottom = -20
-	box.add_theme_constant_override("separation", 16)
+	box.add_theme_constant_override("separation", 14)
 	panel.add_child(box)
 
 	var title := Label.new()
@@ -49,6 +50,17 @@ func _ready() -> void:
 	slider.value_changed.connect(_on_fov)
 	box.add_child(slider)
 	_on_fov(slider.value)
+
+	var look_label := Label.new()
+	look_label.text = "Look"
+	look_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(look_label)
+
+	_look = OptionButton.new()
+	_look.add_item("Dungeon", 0)
+	_look.add_item("Outdoor", 1)
+	_look.item_selected.connect(_on_look)
+	box.add_child(_look)
 
 	var resume := Button.new()
 	resume.text = "Resume"
@@ -71,6 +83,9 @@ func _input(event: InputEvent) -> void:
 func open(current_fov: float) -> void:
 	slider.set_value_no_signal(current_fov)
 	_on_fov(current_fov)
+	_look.set_block_signals(true)
+	_look.select(1 if get_parent().look == "outdoor" else 0)
+	_look.set_block_signals(false)
 	visible = true
 
 
@@ -83,6 +98,10 @@ func _on_fov(value: float) -> void:
 	var player: CharacterBody3D = get_parent().player
 	if player:
 		player.set_fov(value)
+
+
+func _on_look(index: int) -> void:
+	get_parent().set_look("outdoor" if index == 1 else "dungeon")
 
 
 func _resume() -> void:

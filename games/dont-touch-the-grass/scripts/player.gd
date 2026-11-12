@@ -117,6 +117,7 @@ func teleport(at: Vector3, facing_yaw: float) -> void:
 	velocity = Vector3.ZERO
 	_coyote = 0.0
 	_buffer = 0.0
+	_step_wait = 0.0
 	set_look(facing_yaw, 0.0)
 
 

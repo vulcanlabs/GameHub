@@ -11,64 +11,15 @@
 #   lights      ceiling grid. dead / flicker list cells as Vector2i(column, row), counted from the north-west.
 #   enemies     type + where it starts and returns to after a death.
 #
-# Jump limits (see player.gd): the jump peaks about 1.52 m, so a top of 1.40 m can be climbed from the grass.
-# Keep gaps under 2.1 m for a walking jump and under 2.8 m for a sprint. The generator stays inside that.
+# Jump peaks about 1.50 m. Start/finish stay climbable from the grass. Mid pads can sit higher.
+# Each level picks a route shape: straight, zigzag, U, snake, switchback, stairs.
+# Some mid pads slide. Some vanish if you stand on them.
 extends RefCounted
 
 const TOTAL_LEVELS := 50
-
-const LEVEL_1 := {
-	"room": Vector3(40.0, 5.0, 26.0),
-	"platforms": [
-		{"at": Vector2(-16.0, -7.0), "size": Vector2(3.0, 3.0), "top": 1.15},
-		{"at": Vector2(-12.0, -5.6), "size": Vector2(2.2, 2.2), "top": 1.15},
-		{"at": Vector2(-9.4, -1.8), "size": Vector2(2.0, 2.0), "top": 1.15},
-		{"at": Vector2(-6.2, 1.4), "size": Vector2(2.4, 1.8), "top": 1.22},
-		{"at": Vector2(-2.4, 3.2), "size": Vector2(2.0, 2.0), "top": 1.32},
-		{"at": Vector2(-0.4, -1.2), "size": Vector2(1.4, 3.4), "top": 1.32},
-		{"at": Vector2(0.6, -6.5), "size": Vector2(2.2, 2.2), "top": 1.38},
-		{"at": Vector2(4.4, -7.0), "size": Vector2(2.0, 2.0), "top": 1.38},
-		{"at": Vector2(7.8, -4.2), "size": Vector2(2.0, 2.0), "top": 1.32},
-		{"at": Vector2(10.6, -0.6), "size": Vector2(1.6, 2.6), "top": 1.32},
-		{"at": Vector2(12.4, 3.8), "size": Vector2(2.0, 2.0), "top": 1.32},
-		{"at": Vector2(15.4, 6.4), "size": Vector2(3.2, 3.2), "top": 1.32},
-	],
-	"walls": [
-		Rect2(-5.2, -13.0, 0.4, 3.6),
-		Rect2(-5.2, -7.6, 0.4, 6.1),
-		Rect2(4.8, 1.5, 0.4, 6.1),
-		Rect2(4.8, 9.4, 0.4, 3.6),
-	],
-	"lintels": [
-		Rect2(-5.2, -9.4, 0.4, 1.8),
-		Rect2(4.8, 7.6, 0.4, 1.8),
-	],
-	"columns": [
-		Vector2(-13.0, 1.5),
-		Vector2(-13.5, 8.5),
-		Vector2(-2.5, -10.6),
-		Vector2(-1.5, 8.5),
-		Vector2(3.5, -2.0),
-		Vector2(12.5, -8.5),
-		Vector2(16.5, -1.5),
-		Vector2(10.0, 9.5),
-	],
-	"lights": {
-		"spacing": 4.8,
-		"columns": 8,
-		"rows": 5,
-		"dead": [
-			Vector2i(1, 0), Vector2i(2, 0), Vector2i(5, 0), Vector2i(6, 0), Vector2i(7, 0),
-			Vector2i(3, 1), Vector2i(7, 1),
-			Vector2i(1, 3), Vector2i(4, 3),
-			Vector2i(0, 4), Vector2i(1, 4), Vector2i(2, 4), Vector2i(7, 4),
-		],
-		"flicker": [Vector2i(3, 0), Vector2i(0, 2), Vector2i(5, 3), Vector2i(6, 4)],
-	},
-	"enemies": [
-		{"type": "ant", "at": Vector2(-11.0, 6.0)},
-	],
-}
+const MIN_TOP := 1.32
+const STEP := 5.2
+const INSET := 5.2
 
 # Levels 2 to 50 are built from a fixed seed, so a level is the same every time and different from its neighbours.
 static var _cache: Dictionary = {}
@@ -80,7 +31,7 @@ static func has_level(number: int) -> bool:
 
 static func get_level(number: int) -> Dictionary:
 	if number <= 1:
-		return LEVEL_1
+		number = 1
 	if _cache.has(number):
 		return _cache[number]
 	var built := _generate(number)
@@ -110,99 +61,245 @@ static func _generate(number: int) -> Dictionary:
 	return _fallback(number)
 
 
+static func _shape(number: int) -> String:
+	var kinds: Array[String] = ["straight", "zag", "u", "snake", "switchback", "stairs"]
+	return kinds[(number - 1) % kinds.size()]
+
+
 static func _attempt(number: int, rng: RandomNumberGenerator) -> Dictionary:
 	var band := _band(number)
-	var count := 9 + (number % 3)
-	var room := Vector3(50.0, 5.0, 36.0)
-	var gap_max := 1.8
-	var min_size := 1.8
+	var shape := _shape(number)
+	var count := 20
+	var min_size := 2.7
+	var top_hi := 1.72
 	if band == "mid":
-		gap_max = 2.05
-		min_size = 1.6
+		min_size = 2.65
+		top_hi = 1.95
 	elif band == "spider":
-		gap_max = 2.2
-		min_size = 1.5
+		min_size = 2.6
+		top_hi = 2.15
+		count = 22
 	elif band == "hard":
-		gap_max = 2.35
-		min_size = 1.4
-	var sizes: Array[Vector2] = []
-	for i in count:
-		if i == 0 or i == count - 1:
-			sizes.append(Vector2(3.0, 3.0))
-		else:
-			sizes.append(Vector2(rng.randf_range(min_size, min_size + 0.8), rng.randf_range(min_size, min_size + 0.6)))
+		min_size = 2.55
+		top_hi = 2.35
+		count = 22
+	var room := _room_for(shape, count)
+	var spots := _scatter(_route(shape, count, room, rng), room, rng)
 	var pads: Array[Dictionary] = []
-	var pos := Vector2(-room.x * 0.5 + 3.4, rng.randf_range(-2.0, 2.0))
-	var horizontal := true
-	for i in count:
+	for i in spots.size():
+		var size := Vector2(3.8, 3.8) if i == 0 or i == spots.size() - 1 else Vector2(
+			rng.randf_range(min_size, min_size + 0.2),
+			rng.randf_range(min_size, min_size + 0.2)
+		)
+		var top := MIN_TOP
+		if i > 0 and i < spots.size() - 1:
+			if shape == "stairs":
+				var t := float(i) / float(spots.size() - 1)
+				top = MIN_TOP + (1.0 - absf(t * 2.0 - 1.0)) * (top_hi - MIN_TOP)
+			else:
+				top = rng.randf_range(MIN_TOP, top_hi)
 		var entry := {
-			"at": pos,
-			"size": sizes[i],
-			"top": rng.randf_range(1.15, 1.36),
+			"at": spots[i],
+			"size": size,
+			"top": top,
 		}
-		if number >= 11 and i > 1 and i < count - 1 and i % 5 == 3:
-			var slide_axis := "z" if horizontal else "x"
-			var reach := 1.1
+		if number >= 8 and i > 2 and i < spots.size() - 3 and i % 6 == 3 and not entry.has("vanish"):
+			var slide_axis := "z" if shape == "straight" or i % 2 == 0 else "x"
+			var reach := 0.85
 			var offset := Vector2(0.0, reach) if slide_axis == "z" else Vector2(reach, 0.0)
-			if _inside(pos + offset, sizes[i], room) and _inside(pos - offset, sizes[i], room):
-				entry["move"] = {"axis": slide_axis, "distance": reach, "seconds": rng.randf_range(3.2, 4.4)}
+			if _inside(spots[i] + offset, size, room) and _inside(spots[i] - offset, size, room):
+				entry["move"] = {"axis": slide_axis, "distance": reach, "seconds": rng.randf_range(3.0, 4.5)}
+		if number >= 4 and i > 2 and i < spots.size() - 3 and i % 5 == 2 and not entry.has("move"):
+			entry["vanish"] = {"stand": 1.5, "gone": 2.8}
 		pads.append(entry)
-		if i == count - 1:
-			break
-		var gap := rng.randf_range(1.2, gap_max)
-		if rng.randf() < 0.55:
-			horizontal = not horizontal
-		pos = _step(pos, sizes[i], sizes[i + 1], gap, horizontal, room, rng)
 	var data := {
+		"room": room,
+		"platforms": pads,
+		"walls": _side_walls(shape, room, pads, rng),
+		"lintels": [],
+		"columns": _side_columns(shape, room, pads, rng),
+		"lights": _lights(rng, room),
+		"enemies": _enemies(number, rng, room, pads),
+		"portals": [],
+	}
+	return data
+
+
+static func _room_for(shape: String, count: int) -> Vector3:
+	if shape == "straight":
+		return Vector3(float(count - 1) * STEP + INSET * 2.0, 6.5, 26.0)
+	if shape == "u":
+		var arm := maxi(6, count / 3 + 1)
+		return Vector3(float(arm) * STEP + INSET * 2.0, 6.5, float(arm) * STEP + INSET * 2.0)
+	if shape == "snake":
+		var cols := ceili(float(count) / 3.0)
+		return Vector3(float(cols - 1) * STEP + INSET * 2.0, 6.5, 2.0 * STEP + INSET * 2.0)
+	if shape == "switchback":
+		var cols_s := ceili(float(count) / 4.0)
+		return Vector3(float(cols_s - 1) * STEP + INSET * 2.0, 6.5, 3.0 * STEP + INSET * 2.0)
+	return Vector3(float(count - 1) * STEP * 0.88 + INSET * 2.0, 6.5, 32.0)
+
+
+static func _route(shape: String, count: int, room: Vector3, rng: RandomNumberGenerator) -> Array[Vector2]:
+	if shape == "straight":
+		return _line(count, room, 0.0)
+	if shape == "u":
+		return _u(count, room)
+	if shape == "snake":
+		return _rows(count, room, 3)
+	if shape == "switchback":
+		return _rows(count, room, 4)
+	return _zag(count, room, rng)
+
+
+# Keep the route, knock pads off the ruler line so each jump is a real aim.
+static func _scatter(spots: Array[Vector2], room: Vector3, rng: RandomNumberGenerator) -> Array[Vector2]:
+	if spots.size() < 3:
+		return spots
+	var out: Array[Vector2] = spots.duplicate()
+	for i in range(1, spots.size() - 1):
+		var along := out[i + 1] - out[i - 1] if i + 1 < out.size() else out[i] - out[i - 1]
+		if along.length() < 0.2:
+			along = Vector2(1.0, 0.0)
+		along = along.normalized()
+		var perp := Vector2(-along.y, along.x)
+		var cand := out[i] + perp * rng.randf_range(-1.55, 1.55) + along * rng.randf_range(-0.15, 0.35)
+		if not _inside(cand, Vector2(2.8, 2.8), room):
+			continue
+		var prev_gap := _edge_gap(Rect2(out[i - 1] - Vector2(1.35, 1.35), Vector2(2.7, 2.7)), Rect2(cand - Vector2(1.35, 1.35), Vector2(2.7, 2.7)))
+		if prev_gap < 1.25 or prev_gap > 2.72:
+			continue
+		out[i] = cand
+	return out
+
+
+static func _line(count: int, room: Vector3, z: float) -> Array[Vector2]:
+	var left := -room.x * 0.5 + INSET
+	var right := room.x * 0.5 - INSET
+	var out: Array[Vector2] = []
+	for i in count:
+		var t := 0.0 if count == 1 else float(i) / float(count - 1)
+		out.append(Vector2(lerpf(left, right, t), z))
+	return out
+
+
+static func _zag(count: int, room: Vector3, rng: RandomNumberGenerator) -> Array[Vector2]:
+	var left := -room.x * 0.5 + INSET
+	var right := room.x * 0.5 - INSET
+	var north := -room.z * 0.5 + INSET + 2.0
+	var south := room.z * 0.5 - INSET - 2.0
+	var mid := rng.randf_range(north * 0.25, south * 0.25)
+	var out: Array[Vector2] = []
+	for i in count:
+		var t := 0.0 if count == 1 else float(i) / float(count - 1)
+		var z := mid + (1.23 if i % 2 == 0 else -1.23)
+		out.append(Vector2(lerpf(left, right, t), clampf(z, north, south)))
+	return out
+
+
+static func _u(count: int, room: Vector3) -> Array[Vector2]:
+	var left := -room.x * 0.5 + INSET
+	var north := -room.z * 0.5 + INSET
+	var east := count / 3
+	var south := maxi(3, (count - east) / 2)
+	var out: Array[Vector2] = []
+	var at := Vector2(left, north)
+	out.append(at)
+	for _i in east:
+		at += Vector2(STEP, 0.0)
+		out.append(at)
+		if out.size() >= count:
+			return out
+	for _i in south:
+		at += Vector2(0.0, STEP)
+		out.append(at)
+		if out.size() >= count:
+			return out
+	while out.size() < count:
+		at += Vector2(-STEP, 0.0)
+		out.append(at)
+	return out
+
+
+static func _rows(count: int, room: Vector3, rows: int) -> Array[Vector2]:
+	var left := -room.x * 0.5 + INSET
+	var right := room.x * 0.5 - INSET
+	var north := -room.z * 0.5 + INSET
+	var south := room.z * 0.5 - INSET
+	var cols := ceili(float(count) / float(rows))
+	var out: Array[Vector2] = []
+	var n := 0
+	for r in rows:
+		var zt := 0.0 if rows == 1 else float(r) / float(rows - 1)
+		var z := lerpf(north, south, zt)
+		var east := r % 2 == 0
+		for c in cols:
+			if n >= count:
+				break
+			var xt := 0.0 if cols == 1 else float(c) / float(cols - 1)
+			if not east:
+				xt = 1.0 - xt
+			out.append(Vector2(lerpf(left, right, xt), z))
+			n += 1
+	return out
+
+
+static func _along(legs: Array[Vector2], lens: Array[float], dist: float) -> Vector2:
+	for i in lens.size():
+		if dist <= lens[i]:
+			var t := 0.0 if lens[i] < 0.001 else dist / lens[i]
+			return legs[i].lerp(legs[i + 1], t)
+		dist -= lens[i]
+	return legs[legs.size() - 1]
+
+
+static func _side_walls(shape: String, room: Vector3, pads: Array[Dictionary], rng: RandomNumberGenerator) -> Array:
+	var out: Array = []
+	var want := 3 if shape == "straight" else 5
+	for _try in want * 10:
+		if out.size() >= want:
+			break
+		var item := Rect2(rng.randf_range(-room.x * 0.35, room.x * 0.35), rng.randf_range(-room.z * 0.35, room.z * 0.35), 0.4, rng.randf_range(2.4, 5.5))
+		if not _blocks_route(item, pads):
+			out.append(item)
+	return out
+
+
+static func _side_columns(shape: String, room: Vector3, pads: Array[Dictionary], rng: RandomNumberGenerator) -> Array:
+	var out: Array = []
+	var want := 4 if shape == "straight" else 7
+	for _try in want * 10:
+		if out.size() >= want:
+			break
+		var c := Vector2(rng.randf_range(-room.x * 0.4, room.x * 0.4), rng.randf_range(-room.z * 0.4, room.z * 0.4))
+		if not _blocks_route(Rect2(c - Vector2(0.6, 0.6), Vector2(1.2, 1.2)), pads):
+			out.append(c)
+	return out
+
+
+static func _fallback(number: int) -> Dictionary:
+	var shape := _shape(number)
+	var room := _room_for(shape, 20)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = number * 13
+	var spots := _scatter(_route(shape, 20, room, rng), room, rng)
+	var pads: Array[Dictionary] = []
+	for i in spots.size():
+		pads.append({
+			"at": spots[i],
+			"size": Vector2(3.8, 3.8) if i == 0 or i == spots.size() - 1 else Vector2(2.7, 2.7),
+			"top": MIN_TOP if i == 0 or i == spots.size() - 1 else MIN_TOP + float(i % 3) * 0.22,
+		})
+	var enemies: Array = [{"type": "ant", "at": Vector2(0.0, 8.0)}]
+	if number >= 25:
+		enemies.push_front({"type": "spider", "at": Vector2(4.0, -8.0)})
+	return {
 		"room": room,
 		"platforms": pads,
 		"walls": [],
 		"lintels": [],
 		"columns": [],
-		"lights": _lights(rng, room),
-		"enemies": _enemies(number, rng, room, pads),
-		"portals": _portals(number, pads),
-	}
-	return data
-
-
-static func _step(pos: Vector2, size: Vector2, next_size: Vector2, gap: float, horizontal: bool, room: Vector3, rng: RandomNumberGenerator) -> Vector2:
-	var axis := Vector2(1.0, 0.0) if horizontal else Vector2(0.0, 1.0)
-	var reach := (size.x if horizontal else size.y) * 0.5 + (next_size.x if horizontal else next_size.y) * 0.5 + gap
-	var sign := 1.0 if rng.randf() < 0.5 else -1.0
-	for _flip in 2:
-		var nxt := pos + axis * reach * sign
-		if _inside(nxt, next_size, room):
-			return nxt
-		sign = -sign
-	var other := Vector2(0.0, 1.0) if horizontal else Vector2(1.0, 0.0)
-	var reach_other := (size.y if horizontal else size.x) * 0.5 + (next_size.y if horizontal else next_size.x) * 0.5 + gap
-	for _flip in 2:
-		var nxt := pos + other * reach_other * sign
-		if _inside(nxt, next_size, room):
-			return nxt
-		sign = -sign
-	return pos + axis * reach
-
-
-static func _fallback(number: int) -> Dictionary:
-	var pads: Array[Dictionary] = []
-	for i in 10:
-		pads.append({
-			"at": Vector2(-16.0 + float(i) * 4.0, 0.0),
-			"size": Vector2(2.5, 2.5),
-			"top": 1.2,
-		})
-	var enemies: Array = [{"type": "ant", "at": Vector2(0.0, 6.0)}]
-	if number >= 25:
-		enemies.push_front({"type": "spider", "at": Vector2(4.0, -6.0)})
-	return {
-		"room": Vector3(48.0, 5.0, 24.0),
-		"platforms": pads,
-		"walls": [],
-		"lintels": [],
-		"columns": [],
-		"lights": _lights(RandomNumberGenerator.new(), Vector3(48.0, 5.0, 24.0)),
+		"lights": _lights(RandomNumberGenerator.new(), room),
 		"enemies": enemies,
 		"portals": [],
 	}
@@ -235,7 +332,7 @@ static func _blocks_route(footprint: Rect2, pads: Array[Dictionary]) -> bool:
 
 static func _obstacles(rng: RandomNumberGenerator, room: Vector3, pads: Array[Dictionary], walls: bool) -> Array:
 	var out: Array = []
-	var want := 3 if walls else 6
+	var want := 4 if walls else 6
 	for _try in want * 8:
 		if out.size() >= want:
 			break
@@ -290,39 +387,15 @@ static func _enemies(number: int, rng: RandomNumberGenerator, room: Vector3, pad
 	return out
 
 
-static func _portals(number: int, pads: Array[Dictionary]) -> Array:
-	if number < 16 or pads.size() < 6:
-		return []
-	var a: Dictionary = pads[2]
-	var b: Dictionary = pads[pads.size() - 3]
-	if a.has("move") or b.has("move"):
-		return []
-	return [
-		{"at": _corner(a), "to": _center(b)},
-		{"at": _corner(b), "to": _center(a)},
-	]
-
-
-static func _corner(entry: Dictionary) -> Vector3:
-	var at: Vector2 = entry["at"]
-	var size: Vector2 = entry["size"]
-	return Vector3(at.x + size.x * 0.32, float(entry["top"]), at.y + size.y * 0.32)
-
-
-static func _center(entry: Dictionary) -> Vector3:
-	var at: Vector2 = entry["at"]
-	return Vector3(at.x, float(entry["top"]), at.y)
-
-
 static func _problem(data: Dictionary) -> String:
 	var room: Vector3 = data["room"]
 	var pads: Array = data["platforms"]
-	if pads.size() < 8:
+	if pads.size() < 16:
 		return "too few platforms"
 	for i in pads.size():
 		var pad: Dictionary = pads[i]
 		var top: float = pad["top"]
-		if top < 1.1 or top > 1.4:
+		if top < 1.28 or top > 2.6:
 			return "height"
 		if not _inside(pad["at"], pad["size"], room):
 			return "outside"
@@ -332,7 +405,7 @@ static func _problem(data: Dictionary) -> String:
 		if i == 0:
 			continue
 		var gap := _edge_gap(_rect(pads[i - 1]), _rect(pad))
-		if gap < 0.9 or gap > 3.0:
+		if gap < 1.15 or gap > 2.85:
 			return "gap %.2f" % gap
 	return ""
 

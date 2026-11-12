@@ -74,5 +74,5 @@ sprint={
 
 [rendering]
 
-environment/ssao/quality=1
+environment/ssao/quality=0
 anti_aliasing/quality/screen_space_aa=1

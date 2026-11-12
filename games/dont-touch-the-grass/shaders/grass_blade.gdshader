@@ -23,7 +23,6 @@ void vertex() {
 	float amount = calm * 0.05 + shiver * 0.09 * stir;
 	VERTEX.x += amount * bend;
 	VERTEX.z += amount * bend * 0.6;
-	// Light every blade like the floor under it. Per-triangle normals make thin blades sparkle.
 	NORMAL = vec3(0.0, 1.0, 0.0);
 }
 

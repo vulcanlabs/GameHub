@@ -54,9 +54,9 @@ func build(p_mode: Mode, seed_value: int) -> void:
 	_lamp.spot_angle = 54.0
 	_lamp.spot_angle_attenuation = 0.7
 	_lamp.spot_attenuation = 1.3
-	_lamp.shadow_enabled = true
+	_lamp.shadow_enabled = seed_value % 3 == 0
 	_lamp.shadow_bias = 0.06
-	_lamp.light_volumetric_fog_energy = 1.4
+	_lamp.light_volumetric_fog_energy = 0.0
 	add_child(_lamp)
 	set_process(mode == Mode.FLICKER)
 

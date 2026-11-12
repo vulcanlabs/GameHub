@@ -18,7 +18,7 @@ const SoundBank = preload("res://scripts/systems/sound_bank.gd")
 # --- Numbers a monster kind may change in _init() ---
 var kind := "enemy"
 var roam_speed := 1.5
-var chase_speed := 6.0          # player walks 4.5, sprints 7.0
+var chase_speed := 8.8          # player walks 4.5, sprints 7.0. A sprint does not outrun a chase.
 var detect_radius := 30.0       # "nearby": how far away it notices a player on the grass
 var catch_radius := 1.1         # how close its head or body must get
 var reach_height := 0.9         # it cannot grab feet higher than this above the floor

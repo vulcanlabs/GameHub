@@ -11,7 +11,7 @@ Godot 4.7 project, Forward+ renderer. It opens fullscreen into Level 1. The game
 - Mouse to look
 - Space to jump
 - Shift to sprint
-- Esc to pause, release the mouse, and change field of view (60–110). Esc or Resume captures the mouse again
+- Esc to pause, release the mouse, change field of view (60–110), and switch Look between Dungeon and Outdoor. Outdoor has no walls; dirt mounds stand where the indoor walls were. Esc or Resume captures the mouse again
 - F11 to leave or return to fullscreen
 
 Movement keys are input actions in `project.godot` (`move_forward`, `move_back`, `move_left`, `move_right`, `jump`, `sprint`). The stream keys are added when the game starts, so an export has them too:
@@ -88,7 +88,7 @@ No recordings exist yet. Until they do, the narrator speaks through the operatin
 
 To add a recording, save it as `audio/narrator/<line id>.ogg` (or `.wav`, `.mp3`). The line ids are in `scripts/systems/narrator_lines.gd`:
 
-`intro_1`, `tutorial_move_1`, `tutorial_jump_1`, `grass_1`, `grass_2`, `grass_3`, `death_1`, `death_2`, `death_3`, `death_many_1`, `death_many_2`, `level_complete_1`, `level_complete_2`, `milestone_10_1`, `milestone_25_1`, `milestone_50_1`, `reset_1`
+`intro_1`, `grass_1`, `grass_2`, `grass_3`, `death_1`, `death_2`, `death_3`, `death_many_1`, `death_many_2`
 
 ## Where things are
 
@@ -114,4 +114,4 @@ To add a recording, save it as `audio/narrator/<line id>.ogg` (or `.wav`, `.mp3`
 
 ## Settings
 
-The hub stores `{ version: 1 }`. No knobs yet. Field of view lives only in the pause menu for the current session.
+The hub stores `{ version: 1 }`. Field of view and Look (Dungeon or Outdoor) live in the pause menu for the current session.

@@ -89,6 +89,39 @@ static func grass_ground() -> ShaderMaterial:
 	return mat
 
 
+static func dirt() -> StandardMaterial3D:
+	if _cache.has("dirt"):
+		return _cache["dirt"]
+	var mat := StandardMaterial3D.new()
+	mat.albedo_texture = tinted_noise(44, 0.09, Color(0.28, 0.18, 0.09), Color(0.52, 0.36, 0.16))
+	mat.normal_enabled = true
+	mat.normal_texture = noise(45, 0.08, true, 4.0)
+	mat.normal_scale = 0.7
+	mat.roughness = 0.96
+	_cache["dirt"] = mat
+	return mat
+
+
+static func dirt_dark() -> StandardMaterial3D:
+	if _cache.has("dirt_dark"):
+		return _cache["dirt_dark"]
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.08, 0.05, 0.03)
+	mat.roughness = 1.0
+	_cache["dirt_dark"] = mat
+	return mat
+
+
+static func field() -> StandardMaterial3D:
+	if _cache.has("field"):
+		return _cache["field"]
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.28, 0.42, 0.16)
+	mat.roughness = 0.95
+	_cache["field"] = mat
+	return mat
+
+
 # Worn concrete for platform slabs.
 static func concrete() -> StandardMaterial3D:
 	if _cache.has("concrete"):

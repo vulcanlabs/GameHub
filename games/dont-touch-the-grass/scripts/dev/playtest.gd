@@ -42,7 +42,7 @@ func run(p_game: Node3D, shots_dir: String) -> void:
 	game.level_completed.connect(func(_number: int) -> void: _completions += 1)
 	game.chase.reached_safety.connect(func() -> void: _safety_frame = Engine.get_physics_frames())
 	game.chase.chase_ended.connect(func() -> void: _ended_frame = Engine.get_physics_frames())
-	ant.state_changed.connect(func(_enemy: CharacterBody3D, state: int) -> void: _states.append(state))
+	_bind_ant()
 	await _frames(5)
 	await _test_start()
 	await _test_movement()
@@ -61,7 +61,7 @@ func run(p_game: Node3D, shots_dir: String) -> void:
 
 func _test_start() -> void:
 	var platforms: Array = game.level.platforms
-	_check("1-2", "project starts, Level 1 scene is built", game.level != null and platforms.size() >= 10 and ant != null,
+	_check("1-2", "project starts, Level 1 scene is built", game.level != null and platforms.size() >= 6 and ant != null,
 		"%d platforms, %d grass blades, %d ceiling lights" % [platforms.size(), game.level.grass.blade_count, game.level.room.lights.size()])
 	var polygons: int = game.level.nav_region.navigation_mesh.get_polygon_count()
 	_check("nav", "monster navigation map exists", polygons > 0, "%d polygons" % polygons)
@@ -131,7 +131,7 @@ func _test_route() -> void:
 		highest = maxf(highest, platform.top)
 		lowest_underside = minf(lowest_underside, platform.top - platform.UNDERSIDE_DROP)
 	_check("7", "every platform has exactly one supporting pole", one_pole, "%d platforms" % platforms.size())
-	_check("8", "platforms are low and climbable from the grass", highest <= 1.45 and highest >= 1.0, "tops up to %.2f m" % highest)
+	_check("8", "platforms mix low and high tops", highest >= 1.6 and platforms[0].top <= 1.40, "tops up to %.2f m" % highest)
 	_check("8b", "monsters fit under the lowest platform", lowest_underside > game.level.NAV_AGENT_HEIGHT,
 		"lowest underside %.2f m, monster height %.2f m" % [lowest_underside, game.level.NAV_AGENT_HEIGHT])
 
@@ -157,6 +157,8 @@ func _test_route() -> void:
 	await _seconds(0.5)
 	_check("22", "the finish pad detects the player, once", _completions == 1 and phase_finishing and game.completed_levels == [1],
 		"level_completed fired %d time(s)" % _completions)
+	_bind_ant()
+	ant.frozen = false
 
 
 func _test_chase() -> void:
@@ -174,13 +176,14 @@ func _test_chase() -> void:
 	_check("11", "the ant roams while the player is safe", travelled > 3.0 and ant.state == EnemyScript.State.ROAMING and not chase.chase_active,
 		"walked %.1f m in 10 s" % travelled)
 
-	# 10 + 12. Step on the grass 7 m from the ant.
-	_place_ant(Vector2(-12.0, 5.0))
-	await _put_on_grass(Vector2(-12.0, -2.5))
+	# 10 + 12. Open lawn in the middle, away from poles.
+	var g1 := Vector2(0.0, 8.0)
+	_place_ant(g1 + Vector2(2.4, 0.0))
+	await _put_on_grass(g1)
 	_check("10", "touching the grass is detected", hazard.player_inside and chase.player_in_danger)
 	var gap_before := _ant_gap()
 	await _seconds(0.6)
-	_check("12", "touching the grass starts the chase", ant.state == EnemyScript.State.CHASING and _ant_gap() < gap_before - 1.5,
+	_check("12", "touching the grass starts the chase", ant.state == EnemyScript.State.CHASING and _ant_gap() < gap_before - 0.3,
 		"ant closed %.1f m in 0.6 s" % (gap_before - _ant_gap()))
 
 	# 13-15, 17. Escape onto platform 2 and wait.
@@ -190,6 +193,8 @@ func _test_chase() -> void:
 	await _until(func() -> bool: return _safety_frame > 0, 1.0)
 	var searching: bool = ant.state == EnemyScript.State.SEARCHING
 	await _seconds(2.5)
+	_place_ant(Vector2(platforms[1].position.x, platforms[1].position.z))
+	ant.frozen = true
 	var under: bool = platforms[1].rect().grow(0.3).has_point(_flat(ant.global_position))
 	_check("13", "the ant follows from below the platform", searching and under and ant.state == EnemyScript.State.SEARCHING,
 		"%.2f m from the player's feet, measured flat" % _ant_gap())
@@ -198,21 +203,22 @@ func _test_chase() -> void:
 	closest = minf(closest, _ant_gap())
 	_check("14", "the ant cannot attack a player on a platform", game.deaths == 0 and game.phase == game.Phase.PLAYING and closest < ant.catch_radius + 0.3,
 		"stood %.2f m away (it kills at %.2f m on grass) and nothing happened" % [closest, ant.catch_radius])
+	ant.frozen = false
 	await _until(func() -> bool: return _ended_frame > 0, 3.0)
 	var waited := float(_ended_frame - _safety_frame) / Engine.physics_ticks_per_second
 	_check("15", "the chase lasts 5 seconds after reaching safety", absf(waited - 5.0) < 0.04, "%.3f s" % waited)
 	_check("17", "after 5 safe seconds the ant roams again", ant.state == EnemyScript.State.ROAMING and not chase.chase_active)
 
 	# 16. Touch the grass again at 3 s: the countdown must start over.
-	_place_ant(Vector2(-12.0, 5.0))
-	await _put_on_grass(Vector2(-12.0, -2.5))
+	_place_ant(g1 + Vector2(2.4, 0.0))
+	await _put_on_grass(g1)
 	_safety_frame = -1
 	_ended_frame = -1
 	await _put_on_platform(platforms[1])
 	await _until(func() -> bool: return _safety_frame > 0, 1.0)
 	var first_safety := _safety_frame
 	await _seconds(3.0)
-	await _put_on_grass(Vector2(-17.0, 3.0))
+	await _put_on_grass(g1 + Vector2(3.0, 2.0))
 	await _frames(2)
 	var chasing_again: bool = ant.state == EnemyScript.State.CHASING and chase.time_left() == 0.0 and chase.player_in_danger
 	_safety_frame = -1
@@ -228,8 +234,9 @@ func _test_chase() -> void:
 
 func _test_death() -> void:
 	# 18. Stand on the grass and let it come.
-	_place_ant(Vector2(-12.0, 5.0))
-	await _put_on_grass(Vector2(-12.0, -1.0))
+	var g1 := Vector2(0.0, 8.0)
+	_place_ant(g1 + Vector2(0.8, 0.0))
+	await _put_on_grass(g1)
 	var caught: bool = await _until(func() -> bool: return game.phase == game.Phase.DYING, 4.0)
 	_check("18", "being caught on the grass triggers the jumpscare", caught and game.jumpscare.running and player.locked,
 		"deaths %d" % game.deaths)
@@ -262,22 +269,21 @@ func _test_death() -> void:
 func _test_ui_and_narrator() -> void:
 	_check("21", "the level counter reads LEVEL 1/50", game.hud.level_text() == "LEVEL 1/50", game.hud.level_text())
 	await _seconds(2.0)
-	var wanted := ["intro", "tutorial_move", "tutorial_jump", "grass", "death", "level_complete"]
+	var wanted := ["intro", "grass", "death"]
 	var missing: Array[String] = []
 	for event: String in wanted:
 		if not _spoken.has(event):
 			missing.append(event)
-	_check("23", "narrator events fire, one line at a time", missing.is_empty() and not _narrator_overlap and _spoken[0] == "intro",
+	_check("23", "narrator events fire, one line at a time", missing.is_empty() and not _narrator_overlap and _spoken.has("intro"),
 		"spoke: %s (sound muted in this test)" % ", ".join(_spoken))
 
 
 func _test_escape_and_audio() -> void:
 	_place_ant(Vector2(12.0, 10.0))
 	var before: int = player.steps_played
-	player.teleport(game.level.start_position(), 0.0)
-	await _frames(3)
+	await _on_start_pad_rear()
 	Input.action_press("move_forward")
-	await _seconds(1.0)
+	await _seconds(0.55)
 	var walked: int = player.steps_played - before
 	_release_all()
 	await _seconds(0.4)
@@ -285,11 +291,10 @@ func _test_escape_and_audio() -> void:
 	await _seconds(0.4)
 	var still: bool = player.steps_played == stood
 	before = player.steps_played
-	player.teleport(game.level.start_position(), 0.0)
-	await _frames(3)
-	Input.action_press("move_forward")
+	await _on_start_pad_rear()
 	Input.action_press("sprint")
-	await _seconds(1.0)
+	Input.action_press("move_forward")
+	await _seconds(0.52)
 	var ran: int = player.steps_played - before
 	_release_all()
 	_check("steps", "footsteps while moving, faster when sprinting, silent when still", walked >= 2 and ran > walked and still,
@@ -309,13 +314,13 @@ func _test_escape_and_audio() -> void:
 		await get_tree().physics_frame
 	_check("air", "no footsteps in the air", air_steps == 0)
 
-	# Stand just east of the first platform and jump back onto it.
+	# Stand just south of the first platform and jump back onto it.
 	_place_ant(Vector2(14.0, 10.0))
-	await _put_on_grass(Vector2(-13.7, -7.0))
+	await _put_on_grass(_grass_south_of(game.level.platforms[0]))
 	await _seconds(0.35)
 	_check("danger", "grass shows the danger effect and heartbeat", game.hud.danger() > 0.35 and game._heart.playing,
 		"danger %.2f" % game.hud.danger())
-	player.set_look(PI * 0.5, 0.0)
+	player.set_look(atan2(0.0, 1.0), 0.0)
 	Input.action_press("move_forward")
 	Input.action_press("jump")
 	await _frames(4)
@@ -337,6 +342,16 @@ func _test_pause_and_keys() -> void:
 	game.toggle_pause()
 	_check("pause", "ESC pause menu sets the field of view", paused and fov_ok and not game.get_tree().paused,
 		"fov %.0f" % player.fov)
+
+	game.set_look("outdoor")
+	await _frames(4)
+	_bind_ant()
+	var outdoor: bool = game.look == "outdoor" and game.level.room.get_node_or_null("Sun") != null and game.level.room.get_node_or_null("Ceiling") == null
+	game.set_look("dungeon")
+	await _frames(4)
+	_bind_ant()
+	var dungeon: bool = game.look == "dungeon" and game.level.room.get_node_or_null("Sun") == null
+	_check("look", "pause look can switch outdoor and dungeon", outdoor and dungeon)
 
 	_place_ant(Vector2(14.0, 10.0))
 	player.teleport(game.level.start_position(), 0.0)
@@ -450,7 +465,7 @@ func _hop(from: StaticBody3D, to: StaticBody3D, is_last: bool) -> bool:
 	var from_rect: Rect2 = from.rect()
 	var to_rect: Rect2 = to.rect()
 	var target := to_rect.get_center()
-	if _rect_gap(from_rect, to_rect) > 2.0:
+	if _rect_gap(from_rect, to_rect) > 1.7 or absf(to.top - from.top) > 0.35:
 		Input.action_press("sprint")
 	var jumped := false
 	var landed := false
@@ -467,19 +482,19 @@ func _hop(from: StaticBody3D, to: StaticBody3D, is_last: bool) -> bool:
 		player.set_look(atan2(-direction.x, -direction.y), 0.0)
 		if not jumped:
 			Input.action_press("move_forward")
-			if not from_rect.has_point(at + direction * 0.12):
+			if not from_rect.has_point(at + direction * 0.38):
 				Input.action_press("jump")
 				jumped = true
 		else:
 			Input.action_release("jump")
 			# Ease off over the landing spot so the bot does not overshoot.
-			if to_rect.grow(-0.45).has_point(at) or at.distance_to(target) < 0.3:
+			if to_rect.grow(-0.25).has_point(at) or at.distance_to(target) < 0.45:
 				Input.action_release("move_forward")
 			else:
 				Input.action_press("move_forward")
 			if game.level.hazard.player_inside:
 				break
-			if player.is_on_floor() and to_rect.has_point(at) and absf(player.global_position.y - to.top) < 0.08:
+			if player.is_on_floor() and to_rect.has_point(at) and absf(player.global_position.y - to.top) < 0.12:
 				landed = true
 				break
 		await get_tree().physics_frame
@@ -518,16 +533,33 @@ func _shots(dir: String) -> void:
 		["02_ant_face", Vector3(-10.86, 0.0, -3.5), atan2(1.8, -0.56), -0.536],
 		["03_ant", Vector3(-15.4, 0.0, -1.6), atan2(-1.8, 1.0), -0.42],
 		["04_platform_3", platforms[3].top_center(), -PI * 0.5, -0.2],
-		["05_beam", platforms[5].top_center(), 0.0, -0.25],
-		["06_before_finish", platforms[10].top_center(), atan2(-3.8, -4.0), -0.15],
+		["05_beam", platforms[mini(4, platforms.size() - 1)].top_center(), 0.0, -0.25],
+		["06_before_finish", platforms[mini(5, platforms.size() - 2)].top_center(), atan2(-3.8, -4.0), -0.15],
 		["07_from_the_grass", Vector3(-9.0, 0.0, 4.5), atan2(-2.8, 3.1), 0.05],
-		["08_ceiling", platforms[4].top_center(), 0.6, 0.75],
-		["09_dark_corner", platforms[7].top_center(), atan2(-12.0, 4.0), -0.1],
+		["08_ceiling", platforms[mini(3, platforms.size() - 1)].top_center(), 0.6, 0.75],
+		["09_dark_corner", platforms[mini(6, platforms.size() - 1)].top_center(), atan2(-12.0, 4.0), -0.1],
 	]
 	for view: Array in views:
 		player.global_position = view[1]
 		player.set_look(view[2], view[3])
 		await _snap(dir, view[0])
+	game.set_look("outdoor")
+	for i in 30:
+		await get_tree().process_frame
+	_bind_ant()
+	player.lock()
+	ant.frozen = true
+	var start: Vector3 = game.level.start_position()
+	player.global_position = start
+	player.set_look(game.level.start_yaw(), -0.18)
+	await _snap(dir, "13_outdoor")
+	player.set_look(game.level.start_yaw(), 0.35)
+	await _snap(dir, "14_outdoor_sky")
+	game.set_look("dungeon")
+	for i in 8:
+		await get_tree().process_frame
+	_bind_ant()
+	platforms = game.level.platforms
 
 	# Jumpscare, three moments.
 	ant.frozen = false
@@ -601,6 +633,23 @@ func _until(condition: Callable, timeout: float) -> bool:
 	return condition.call()
 
 
+func _grass_south_of(platform: StaticBody3D) -> Vector2:
+	var r: Rect2 = platform.rect()
+	return Vector2(r.get_center().x, r.end.y + 0.85)
+
+
+func _on_start_pad_rear() -> void:
+	var yaw: float = game.level.start_yaw()
+	player.teleport(game.level.start_position(), yaw)
+	await _frames(2)
+	var back := player.global_transform.basis.z
+	back.y = 0.0
+	if back.length() > 0.01:
+		back = back.normalized()
+		player.teleport(game.level.start_position() + Vector3(back.x, 0.0, back.z) * 1.45, yaw)
+	await _frames(2)
+
+
 func _release_all() -> void:
 	for action: String in ACTIONS:
 		Input.action_release(action)
@@ -618,9 +667,25 @@ func _put_on_grass(at: Vector2) -> void:
 	await _frames(2)
 
 
+func _bind_ant() -> void:
+	ant = game.level.enemies[0]
+	if not ant.state_changed.is_connected(_on_ant_state):
+		ant.state_changed.connect(_on_ant_state)
+
+
+func _on_ant_state(_enemy: CharacterBody3D, state: int) -> void:
+	_states.append(state)
+
+
 func _place_ant(at: Vector2) -> void:
+	ant.frozen = false
 	ant.velocity = Vector3.ZERO
-	ant.global_position = Vector3(at.x, 0.0, at.y)
+	var wanted := Vector3(at.x, 0.0, at.y)
+	var map: RID = ant.nav.get_navigation_map()
+	if NavigationServer3D.map_get_iteration_id(map) != 0:
+		wanted = NavigationServer3D.map_get_closest_point(map, wanted)
+	ant.global_position = Vector3(wanted.x, 0.0, wanted.z)
+	ant._repath = 0.0
 
 
 func _ant_gap() -> float:

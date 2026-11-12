@@ -20,7 +20,7 @@ const SoundBank = preload("res://scripts/systems/sound_bank.gd")
 const Materials = preload("res://scripts/materials.gd")
 const PlaytestScript = preload("res://scripts/dev/playtest.gd")
 
-const MAX_RENDER_HEIGHT := 1080.0
+const MAX_RENDER_HEIGHT := 900.0
 
 enum Phase { PLAYING, DYING, FINISHING }
 
@@ -44,6 +44,7 @@ var _scratch: AudioStreamPlayer3D
 var _heart: AudioStreamPlayer
 var _danger := 0.0
 var pause_menu: CanvasLayer
+var look := "dungeon"
 var _scratch_wait := 12.0
 var _stir := 0.0
 var _automated := false
@@ -92,7 +93,7 @@ func _ready() -> void:
 # The level counter and other 2D parts stay sharp.
 func _fit_render_scale() -> void:
 	var height := float(get_window().size.y)
-	get_viewport().scaling_3d_scale = clampf(MAX_RENDER_HEIGHT / maxf(height, 1.0), 0.4, 1.0)
+	get_viewport().scaling_3d_scale = clampf(MAX_RENDER_HEIGHT / maxf(height, 1.0), 0.35, 1.0)
 
 
 func _input(event: InputEvent) -> void:
@@ -115,8 +116,6 @@ func begin() -> void:
 		return
 	started = true
 	narrator.say("intro")
-	narrator.say("tutorial_move")
-	narrator.say("tutorial_jump")
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -182,7 +181,7 @@ func _load_level(number: int) -> void:
 	level = LevelScript.new()
 	level.name = "Level%d" % number
 	add_child(level)
-	level.build(LevelData.get_level(number))
+	level.build(LevelData.get_level(number), look)
 	if not player.is_inside_tree():
 		# The player enters the world already standing on the first platform. Entering at 0,0,0 would count as touching grass.
 		player.position = level.start_position()
@@ -193,8 +192,6 @@ func _load_level(number: int) -> void:
 	for enemy in level.enemies:
 		enemy.caught_player.connect(_on_enemy_caught)
 	hud.set_level(number, LevelData.TOTAL_LEVELS)
-	if number == 10 or number == 25 or number == 50:
-		narrator.say("milestone_%d" % number)
 	_restart_level()
 
 
@@ -240,7 +237,7 @@ func _on_finish_reached() -> void:
 		completed_levels.append(level_number)
 	level_completed.emit(level_number)
 	print("level %d completed" % level_number)
-	narrator.say("level_complete")
+	pass
 	player.lock()
 	await hud.fade_out(finish_fade)
 	if hold_level or not LevelData.has_level(level_number + 1):
@@ -297,6 +294,19 @@ func _exit_tree() -> void:
 	SoundBank.clear()
 
 
+func set_look(next: String) -> void:
+	if next != "dungeon" and next != "outdoor":
+		return
+	if next == look:
+		return
+	look = next
+	if level == null:
+		return
+	if player:
+		player.lock()
+	_load_level(level_number)
+
+
 func toggle_pause() -> void:
 	if get_tree().paused:
 		get_tree().paused = false
@@ -324,7 +334,6 @@ func reset_run() -> void:
 	completed_levels.clear()
 	phase = Phase.PLAYING
 	_load_level(1)
-	narrator.say("reset")
 
 
 func _push_backward() -> void:
@@ -333,9 +342,9 @@ func _push_backward() -> void:
 	if back.length() < 0.01:
 		return
 	back = back.normalized()
-	player.velocity.x = back.x * 11.0
-	player.velocity.z = back.z * 11.0
-	player.velocity.y = 3.2
+	player.velocity.x = back.x * 14.0
+	player.velocity.z = back.z * 14.0
+	player.velocity.y = 3.6
 
 
 func _add_monster() -> void:

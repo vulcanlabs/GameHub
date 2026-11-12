@@ -10,42 +10,20 @@ extends RefCounted
 
 const EVENTS := {
 	"intro": {"priority": 1, "cooldown": 0.0, "queue": true, "lines": [
-		{"id": "intro_1", "text": "Welcome to Don't Touch the Grass. There is literally one rule. Don't touch the grass. Think you can handle that?"},
+		{"id": "intro_1", "text": "Don't touch the grass."},
 	]},
-	"tutorial_move": {"priority": 1, "cooldown": 0.0, "queue": true, "lines": [
-		{"id": "tutorial_move_1", "text": "Walk with W, A, S and D. Hold Shift to sprint. Press Space to jump. Yes, I really do have to explain this."},
-	]},
-	"tutorial_jump": {"priority": 1, "cooldown": 0.0, "queue": true, "lines": [
-		{"id": "tutorial_jump_1", "text": "See that platform? Jump onto it. Preferably without embarrassing yourself."},
-	]},
-	"grass": {"priority": 2, "cooldown": 25.0, "queue": false, "lines": [
-		{"id": "grass_1", "text": "Oh, brilliant. You've attracted the ants."},
-		{"id": "grass_2", "text": "One rule. There was one rule."},
-		{"id": "grass_3", "text": "The grass. Of course you touched the grass."},
+	"grass": {"priority": 2, "cooldown": 18.0, "queue": false, "lines": [
+		{"id": "grass_1", "text": "Oops. I think you made a mistake."},
+		{"id": "grass_2", "text": "That was the grass. The one thing I asked you not to touch."},
+		{"id": "grass_3", "text": "Oops. Off the platform."},
 	]},
 	"death": {"priority": 3, "cooldown": 0.0, "queue": false, "lines": [
-		{"id": "death_1", "text": "That was impressive. I've never seen someone fail quite so confidently."},
-		{"id": "death_2", "text": "And you are dead. I am shocked. Truly."},
+		{"id": "death_1", "text": "Oops. I think you made a mistake."},
+		{"id": "death_2", "text": "And you are dead. I did warn you."},
 		{"id": "death_3", "text": "The ant says thank you."},
 	]},
 	"death_many": {"priority": 3, "cooldown": 0.0, "queue": false, "lines": [
-		{"id": "death_many_1", "text": "Are you trying to complete the game, or are you feeding the ants?"},
+		{"id": "death_many_1", "text": "Oops. Again."},
 		{"id": "death_many_2", "text": "At this point the ants know you by name."},
-	]},
-	"level_complete": {"priority": 3, "cooldown": 0.0, "queue": false, "lines": [
-		{"id": "level_complete_1", "text": "Congratulations. You survived. Somehow."},
-		{"id": "level_complete_2", "text": "You made it. Do not let it go to your head."},
-	]},
-	"milestone_10": {"priority": 2, "cooldown": 0.0, "queue": true, "lines": [
-		{"id": "milestone_10_1", "text": "Ten levels. The grass is still winning more often than you are."},
-	]},
-	"milestone_25": {"priority": 2, "cooldown": 0.0, "queue": true, "lines": [
-		{"id": "milestone_25_1", "text": "Level twenty five. The ants brought a friend. It has more legs."},
-	]},
-	"milestone_50": {"priority": 3, "cooldown": 0.0, "queue": true, "lines": [
-		{"id": "milestone_50_1", "text": "Level fifty. If you die here, I will never let you forget it."},
-	]},
-	"reset": {"priority": 2, "cooldown": 0.0, "queue": false, "lines": [
-		{"id": "reset_1", "text": "Back to the start. The grass kept your score."},
 	]},
 }

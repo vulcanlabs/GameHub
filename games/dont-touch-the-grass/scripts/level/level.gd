@@ -27,12 +27,12 @@ var enemies: Array[CharacterBody3D] = []
 var nav_region: NavigationRegion3D
 
 
-func build(level_data: Dictionary) -> void:
+func build(level_data: Dictionary, look: String = "dungeon") -> void:
 	data = level_data
 	room = RoomScript.new()
 	room.name = "Room"
 	add_child(room)
-	room.build(data)
+	room.build(data, look)
 
 	var blockers: Array[Rect2] = room.blockers.duplicate()
 	for entry: Dictionary in data["platforms"]:
@@ -45,6 +45,9 @@ func build(level_data: Dictionary) -> void:
 			var move: Dictionary = entry["move"]
 			var axis := Vector3(1.0, 0.0, 0.0) if move["axis"] == "x" else Vector3(0.0, 0.0, 1.0)
 			platform.set_motion(axis, move["distance"], move["seconds"])
+		if entry.has("vanish"):
+			var vanish: Dictionary = entry["vanish"]
+			platform.set_vanish(vanish["stand"], vanish["gone"])
 
 	var portals: Array = data.get("portals", [])
 	for i in range(0, portals.size(), 2):
@@ -58,15 +61,19 @@ func build(level_data: Dictionary) -> void:
 		b.destination = portals[i]["to"]
 
 	var area: Rect2 = room.floor_rect()
+	var grass_area: Rect2 = room.field_rect() if look == "outdoor" else area
 	grass = GrassFieldScript.new()
 	grass.name = "GrassField"
 	add_child(grass)
-	grass.build(area, blockers)
+	if look == "outdoor":
+		grass.build(grass_area, blockers, area, room.hills)
+	else:
+		grass.build(area, blockers)
 
 	hazard = GrassHazardScript.new()
 	hazard.name = "GrassHazard"
 	add_child(hazard)
-	hazard.build(area)
+	hazard.build(grass_area if look == "outdoor" else area)
 
 	var last := platforms[-1]
 	finish = FinishZoneScript.new()

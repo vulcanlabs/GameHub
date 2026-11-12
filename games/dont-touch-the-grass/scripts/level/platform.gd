@@ -5,10 +5,10 @@ extends AnimatableBody3D
 
 const Materials = preload("res://scripts/materials.gd")
 
-const SLAB_THICKNESS := 0.10
-const FRAME_HEIGHT := 0.10
+const SLAB_THICKNESS := 0.28
+const FRAME_HEIGHT := 0.16
 # Slab top to the lowest point of the frame. Monsters must be shorter than (top - UNDERSIDE_DROP).
-const UNDERSIDE_DROP := 0.14
+const UNDERSIDE_DROP := 0.32
 
 var size := Vector2.ONE
 var top := 1.0
@@ -23,6 +23,11 @@ var _home := Vector3.ZERO
 var _move_axis := Vector3.ZERO
 var _move_distance := 0.0
 var _move_seconds := 1.0
+var _vanish_stand := 0.0
+var _vanish_gone := 0.0
+var _stood := 0.0
+var _hidden := false
+var _hidden_for := 0.0
 
 
 func build(center: Vector2, p_size: Vector2, p_top: float) -> void:
@@ -65,9 +70,49 @@ func set_motion(axis: Vector3, distance: float, seconds: float) -> void:
 	set_physics_process(true)
 
 
-func _physics_process(_delta: float) -> void:
-	var phase := sin(float(Time.get_ticks_msec()) * 0.001 * TAU / _move_seconds)
-	global_position = _home + _move_axis * phase * _move_distance
+# Drop away after the player stands on it, then come back. Start and finish never use this.
+func set_vanish(stand_seconds: float, gone_seconds: float) -> void:
+	_vanish_stand = stand_seconds
+	_vanish_gone = gone_seconds
+	set_physics_process(true)
+
+
+func _physics_process(delta: float) -> void:
+	if _move_distance > 0.01:
+		var phase := sin(float(Time.get_ticks_msec()) * 0.001 * TAU / _move_seconds)
+		global_position = _home + _move_axis * phase * _move_distance
+	if _vanish_stand <= 0.0:
+		return
+	if _hidden:
+		_hidden_for += delta
+		if _hidden_for >= _vanish_gone:
+			_hidden = false
+			_hidden_for = 0.0
+			_stood = 0.0
+			visible = true
+			collision_layer = 4
+		return
+	if _player_on():
+		_stood += delta
+		if _stood >= _vanish_stand:
+			_hidden = true
+			_hidden_for = 0.0
+			visible = false
+			collision_layer = 0
+	else:
+		_stood = maxf(_stood - delta * 2.0, 0.0)
+
+
+func _player_on() -> bool:
+	for node in get_tree().get_nodes_in_group("player"):
+		var body := node as Node3D
+		if body == null:
+			continue
+		if not rect().has_point(Vector2(body.global_position.x, body.global_position.z)):
+			continue
+		if absf(body.global_position.y - top) < 0.45:
+			return true
+	return false
 
 
 func pole_rect() -> Rect2:

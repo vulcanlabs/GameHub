@@ -22,15 +22,15 @@ var _eye_mat: StandardMaterial3D
 
 func _init() -> void:
 	kind = "spider"
-	roam_speed = 1.3
-	chase_speed = 6.4
-	catch_radius = 1.35
+	roam_speed = 2.2
+	chase_speed = 9.2
+	catch_radius = 1.85
 	reach_height = 1.0
-	head_distance = 0.7
+	head_distance = 0.95
 	body_height = 0.85
-	body_radius = 0.5
-	mouth_offset = Vector3(0.0, 0.42, -0.85)
-	jumpscare_distance = 0.85
+	body_radius = 0.72
+	mouth_offset = Vector3(0.0, 0.58, -1.05)
+	jumpscare_distance = 1.1
 
 
 func scare_stream() -> AudioStream:
@@ -65,6 +65,7 @@ func _build_model() -> void:
 	_model = Node3D.new()
 	_model.name = "Model"
 	add_child(_model)
+	_model.scale = Vector3(1.42, 1.48, 1.42)
 	_ellipsoid(Vector3(0.0, 0.38, 0.15), Vector3(0.42, 0.22, 0.48), _body)
 	_ellipsoid(Vector3(0.0, 0.40, -0.42), Vector3(0.28, 0.16, 0.30), _body)
 	for side: float in [1.0, -1.0]:
