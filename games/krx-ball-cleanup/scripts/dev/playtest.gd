@@ -13,7 +13,7 @@ extends Node
 ## The numbers it prints are only true for the machine that ran it.
 
 const ACTIONS := ["move_forward", "move_back", "move_left", "move_right", "jump", "sprint", "vacuum", "unload"]
-const START_BALLS := 250000
+const START_BALLS := 234000
 
 var game: Node3D
 var player: Player
@@ -63,9 +63,9 @@ func run(p_game: Node3D, shots_dir: String) -> void:
 
 func _test_start() -> void:
 	_start_layout = balls.layout_hash()
-	_check("1", "Level 1 holds exactly 20,000 balls", balls.count() == 20000 and GameState.remaining[0] == 20000,
+	_check("1", "Level 1 holds exactly 4,000 balls", balls.count() == 4000 and GameState.remaining[0] == 4000,
 		"%d in the registry, %d drawn (top %d layers of each column)" % [balls.count(), balls.drawn_count(), BallManager.SHELL])
-	_check("2", "the run holds exactly 250,000 balls", GameState.total_remaining() == START_BALLS and GameState.balls_in_run() == START_BALLS,
+	_check("2", "the run holds exactly 234,000 balls", GameState.total_remaining() == START_BALLS and GameState.balls_in_run() == START_BALLS,
 		"levels: %s" % str(Array(GameState.remaining)))
 	var problem := balls.validate()
 	_check("3", "ball registry is consistent, nothing on blocked floor", problem == "", problem)
@@ -93,7 +93,7 @@ func _test_start() -> void:
 
 	_check("6", "only Level 1 starts unlocked", GameState.unlocked[0] and GameState.unlocked.count(true) == 1)
 	await _frames(3)
-	_check("7", "HUD shows the counts", hud.balls_left_text() == "250,000" and hud.level_text() == "LEVEL 1 / 7   PLAYROOM"
+	_check("7", "HUD shows the counts", hud.balls_left_text() == "234,000" and hud.level_text() == "LEVEL 1 / 6   PLAYROOM"
 		and hud.tank_text() == "0 / 50,000" and hud.deposited_text() == "0",
 		"%s | %s | %s" % [hud.balls_left_text(), hud.level_text(), hud.tank_text()])
 	var dot := hud.dot()
@@ -260,10 +260,10 @@ func _test_vacuum() -> void:
 	var rate := at_speed - balls.count()
 	Input.action_release("vacuum")
 	var taken := before - balls.count()
-	_check("21", "holding left mouse collects balls from the pile", taken > 800 and GameState.vacuum_stored == taken and GameState.remaining[0] == balls.count(),
+	_check("21", "holding left mouse collects balls from the pile", taken > 80 and GameState.vacuum_stored == taken and GameState.remaining[0] == balls.count(),
 		"%d collected, %d left in the level" % [taken, balls.count()])
-	_check("22", "collection rate at full power is 1,200 balls a second", absi(rate - 1200) <= 24, "%d in one second" % rate)
-	_check("23", "collected balls fly to the nozzle", in_flight > 50 and seen_sucking, "up to %d in the air at once" % in_flight)
+	_check("22", "collection rate at full power is 280 balls a second", absi(rate - 280) <= 40, "%d in one second" % rate)
+	_check("23", "collected balls fly to the nozzle", in_flight > 8 and seen_sucking, "up to %d in the air at once" % in_flight)
 	_check("24", "no ball is lost or invented", GameState.balls_in_run() == START_BALLS, "%d in the run" % GameState.balls_in_run())
 
 	await _until(func() -> bool: return not balls.settling(), 4.0)
@@ -311,8 +311,9 @@ func _test_unload() -> void:
 
 	player.teleport(Vector3(0.0, 0.05, 5.0), 0.0)
 	await _until(player.is_on_floor, 1.0)
+	player.set_look(0.0, -0.7)
 	await _frames(4)
-	_check("32", "the prompt appears beside the pit", pit.player_in_range and pit.can_unload() and hud.prompt_visible())
+	_check("32", "the prompt appears when looking into the pit", pit.player_in_range and pit.can_unload() and hud.prompt_visible())
 
 	var level_before := pit.surface_height()
 	Input.action_press("unload")
@@ -332,8 +333,8 @@ func _test_unload() -> void:
 		"%d in one second" % rate)
 	_check("34", "balls pour into the pit", in_flight > 40, "up to %d in the air at once" % in_flight)
 	await _seconds(0.5)
-	_check("35", "releasing E stops the unload part way", GameState.deposited == partial and partial > 0 and partial < 50000 and not pit.unloading,
-		"%d deposited, %d still in the tank" % [partial, GameState.vacuum_stored])
+	_check("35", "releasing E keeps pouring", GameState.deposited > partial and pit.unloading,
+		"%d deposited, %d still in the tank" % [GameState.deposited, GameState.vacuum_stored])
 
 	Input.action_press("unload")
 	var emptied: bool = await _until(func() -> bool: return GameState.vacuum_stored == 0, 8.0)
@@ -486,7 +487,7 @@ func _test_unlock_and_restart() -> void:
 	# Shortcut: empty the level in one call instead of vacuuming the rest of it.
 	balls.clear_all()
 	await _frames(3)
-	_check("53", "clearing Level 1 unlocks Level 2", GameState.remaining[0] == 0 and GameState.unlocked[1] and not GameState.unlocked[2] and hud.toast_text().begins_with("LEVEL 2 UNLOCKED"),
+	_check("53", "clearing Level 1 unlocks Level 2", GameState.remaining[0] == 0 and GameState.unlocked[1] and not GameState.unlocked[2] and hud.toast_text().begins_with("LEVEL 1 COMPLETED"),
 		hud.toast_text())
 
 	Settings.set_value("camera", "fov", 77.0)
@@ -499,7 +500,7 @@ func _test_unlock_and_restart() -> void:
 	await _frames(5)
 	_check("54", "Restart Run needs two presses", first == 0 and restarts[0] == 1)
 	var problem := balls.validate()
-	_check("55", "restart restores the run", problem == "" and balls.count() == 20000 and balls.layout_hash() == _start_layout and GameState.balls_in_run() == START_BALLS
+	_check("55", "restart restores the run", problem == "" and balls.count() == 4000 and balls.layout_hash() == _start_layout and GameState.balls_in_run() == START_BALLS
 		and GameState.vacuum_stored == 0 and GameState.deposited == 0 and not GameState.unlocked[1] and GameState.run_time < 0.2
 		and _flat(player.global_position).distance_to(_flat(level.spawn_point())) < 0.05 and not get_tree().paused,
 		"%d balls, same layout as the first start: %s" % [balls.count(), balls.layout_hash() == _start_layout])
@@ -510,7 +511,7 @@ func _test_unlock_and_restart() -> void:
 # How long the scripted parts take. Not pass or fail, and only true for the machine that ran it.
 func _report_costs() -> void:
 	var began := Time.get_ticks_usec()
-	balls.populate(20000, level.PILES, level.BALL_SEED)
+	balls.populate(4000, level.PILES, level.BALL_SEED)
 	var fill_ms := (Time.get_ticks_usec() - began) / 1000.0
 	var positions := PackedVector3Array()
 	var colors := PackedColorArray()

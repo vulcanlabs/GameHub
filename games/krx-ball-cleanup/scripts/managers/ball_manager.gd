@@ -34,7 +34,11 @@ const SUCTION_RADIUS_NEAR := 0.75           # width of the area cleared right at
 const SUCTION_RADIUS_FAR := 1.6             # width at full reach (m)
 const NO_TARGET := Vector3(INF, INF, INF)
 
-const PALETTE := [Color("#F06B68"), Color("#6BA3F0"), Color("#F7E07A"), Color("#7ED99A"), Color("#F5A35C")]
+const PALETTE := [
+	Color("#8C403C"), Color("#A89048"), Color("#3E7A4C"),
+	Color("#3A5888"), Color("#A86838"), Color("#8A5870"),
+	Color("#4A7880"), Color("#645080"),
+]
 
 ## Sphere detail by distance: [radial segments, rings].
 const LOD_SHAPES := [[16, 8], [10, 5], [6, 3]]
@@ -101,7 +105,7 @@ func _ready() -> void:
 
 ## Lays the grid over `bounds` (x, z in metres) at floor height `floor_y`.
 ## Columns whose centre is inside one of `blocked` (pit, pillars, furniture) never hold a ball.
-func setup(level: int, bounds: Rect2, floor_y: float, blocked: Array[Rect2]) -> void:
+func setup(level: int, bounds: Rect2, floor_y: float, blocked: Array[Rect2], circles: Array = []) -> void:
 	level_index = level
 	_origin = bounds.position
 	_floor_y = floor_y
@@ -116,8 +120,17 @@ func setup(level: int, bounds: Rect2, floor_y: float, blocked: Array[Rect2]) -> 
 	for j in rows:
 		for i in columns:
 			var at := column_centre(i, j)
+			var taken := false
 			for rect in blocked:
 				if rect.has_point(at):
+					_blocked[j * columns + i] = 1
+					taken = true
+					break
+			if taken:
+				continue
+			for circle in circles:
+				var c: Vector3 = circle
+				if at.distance_to(Vector2(c.x, c.y)) < c.z:
 					_blocked[j * columns + i] = 1
 					break
 	_chunk_columns = ceili(float(columns) / CHUNK)
@@ -305,12 +318,12 @@ func ball_position(i: int, j: int, layer: int) -> Vector3:
 		_origin.y + (j + 0.5) * ROW + odd * SPACING * 0.2886751 + (((bits >> 8) & 255) / 255.0 - 0.5) * JITTER)
 
 
-## One of the five ball colours, shifted slightly lighter or darker so no two neighbours match exactly.
+## One of the ball-pit colours, shifted slightly so neighbours do not match exactly.
 func ball_color(i: int, j: int, layer: int) -> Color:
 	var bits := _hash(i, j, layer)
 	var base: Color = PALETTE[(bits >> 20) % PALETTE.size()]
 	var shade := ((bits >> 24) & 127) / 127.0 * 2.0 - 1.0
-	return base.lightened(shade * 0.07) if shade > 0.0 else base.darkened(-shade * 0.09)
+	return base.lightened(shade * 0.03) if shade > 0.0 else base.darkened(-shade * 0.06)
 
 
 func _hash(i: int, j: int, layer: int) -> int:

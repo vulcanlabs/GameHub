@@ -19,7 +19,7 @@ const REST_POSITION := Vector3(0.078, -0.062, -0.128)
 const REST_ROTATION := Vector3(0.07, 0.085, 0.0)
 
 ## Balls collected per second at full power.
-@export var collect_rate := 1200.0
+@export var collect_rate := 280.0
 ## How far the suction reaches from the camera (m).
 @export var reach := 4.5
 ## Seconds for the motor to reach full power, and to stop.
@@ -72,7 +72,12 @@ func suction_point() -> Vector3:
 
 
 func _physics_process(delta: float) -> void:
-	var held := enabled and Input.is_action_pressed("vacuum")
+	var using_vacuum := GameState.tool == GameState.TOOL_VACUUM
+	if _model != null:
+		_model.visible = using_vacuum
+	var held := enabled and using_vacuum and Input.is_action_pressed("vacuum")
+	if enabled and not using_vacuum and Input.is_action_just_pressed("vacuum") and not GameState.vacuum_full():
+		_take(1)
 	power = move_toward(power, 1.0 if held else 0.0, delta / (spin_up if held else spin_down))
 	_suck_hold = maxf(_suck_hold - delta, 0.0)
 	_warn_wait = maxf(_warn_wait - delta, 0.0)
@@ -86,9 +91,21 @@ func _physics_process(delta: float) -> void:
 	sucking = _suck_hold > 0.0
 
 
+func _unhandled_input(event: InputEvent) -> void:
+	if not (event is InputEventKey) or not event.pressed or event.echo:
+		return
+	if event.physical_keycode == KEY_1:
+		GameState.set_tool(GameState.TOOL_HAND)
+	elif event.physical_keycode == KEY_2:
+		GameState.set_tool(GameState.TOOL_VACUUM)
+
+
 func _collect(delta: float) -> void:
 	_carry += collect_rate * power * delta
-	var wanted := mini(int(_carry), GameState.vacuum_space())
+	_take(mini(int(_carry), GameState.vacuum_space()))
+
+
+func _take(wanted: int) -> void:
 	if wanted <= 0:
 		return
 	_positions.clear()
@@ -182,14 +199,12 @@ func _build_model() -> void:
 	_model.name = "Model"
 	add_child(_model)
 
-	# Motor housing, with a yellow band, a yellow end cap and three cooling grooves.
 	_tube(0.075, 0.075, 0.34, 0.0, body, true)
 	_tube(0.0775, 0.0775, 0.05, -0.065, yellow)
 	_tube(0.064, 0.064, 0.03, 0.172, yellow)
 	for groove in 3:
 		_tube(0.0765, 0.0765, 0.007, 0.035 + groove * 0.024, rubber)
 
-	# Reducer, steel wand with two yellow collars, flared nozzle with a rubber lip.
 	_tube(0.07, 0.04, 0.1, -0.2, body)
 	_tube(0.036, 0.036, 0.36, -0.41, steel)
 	_tube(0.043, 0.043, 0.034, -0.29, yellow)
@@ -206,7 +221,6 @@ func _build_model() -> void:
 	throat.roughness = 1.0
 	_tube(0.057, 0.057, 0.004, -0.655, throat)
 
-	# Carry handle on top, pistol grip underneath.
 	_box(Vector3(0.016, 0.05, 0.018), Vector3(0.0, 0.095, -0.07), yellow)
 	_box(Vector3(0.016, 0.05, 0.018), Vector3(0.0, 0.095, 0.09), yellow)
 	var bar := _tube(0.0115, 0.0115, 0.205, 0.01, rubber, true)
@@ -214,7 +228,6 @@ func _build_model() -> void:
 	var grip := _box(Vector3(0.036, 0.12, 0.05), Vector3(0.0, -0.12, 0.06), rubber)
 	grip.rotation.x = -0.26
 
-	# Ribbed hose leaving the back of the housing and dropping out of view.
 	var points := [Vector3(0.0, 0.0, 0.18), Vector3(0.0, 0.0, 0.4), Vector3(0.06, -0.3, 0.5), Vector3(0.12, -0.75, 0.36)]
 	var ribs := 40
 	for n in ribs:
@@ -228,10 +241,8 @@ func _build_model() -> void:
 		rib.radial_segments = 14
 		rib.rings = 1
 		var node := _part(rib, at, Vector3.ZERO, rubber)
-		# A cylinder's axis is its local Y. Point it along the hose.
 		node.quaternion = Quaternion(Vector3.UP, ahead.normalized())
 
-	# Three status lamps along the top left of the housing, where the player can see them.
 	var lamp_colors := [Color(0.2, 1.0, 0.35), Color(1.0, 0.62, 0.08), Color(1.0, 0.12, 0.08)]
 	for n in 3:
 		var socket := CylinderMesh.new()
@@ -239,8 +250,8 @@ func _build_model() -> void:
 		socket.bottom_radius = 0.011
 		socket.height = 0.006
 		socket.radial_segments = 12
-		var at := Vector3(-0.034, 0.0665, -0.02 + n * 0.032)
-		_part(socket, at, Vector3(0.0, 0.0, 0.47), rubber)
+		var lamp_at := Vector3(-0.034, 0.0665, -0.02 + n * 0.032)
+		_part(socket, lamp_at, Vector3(0.0, 0.0, 0.47), rubber)
 		var glow := StandardMaterial3D.new()
 		glow.albedo_color = lamp_colors[n]
 		glow.emission_enabled = true
@@ -251,7 +262,7 @@ func _build_model() -> void:
 		bulb.height = 0.016
 		bulb.radial_segments = 10
 		bulb.rings = 5
-		_lamps.append(_part(bulb, at + Vector3(-0.0015, 0.003, 0.0), Vector3.ZERO, glow))
+		_lamps.append(_part(bulb, lamp_at + Vector3(-0.0015, 0.003, 0.0), Vector3.ZERO, glow))
 
 	tip = Marker3D.new()
 	tip.name = "Tip"

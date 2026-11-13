@@ -1,0 +1,1 @@
+# Keep level backups out of Godot's import scan so class_name copies do not clash.

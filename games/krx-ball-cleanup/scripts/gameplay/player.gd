@@ -32,9 +32,15 @@ var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _fov := 90.0
 var _sensitivity := 0.5
 var _head_bob := true
+## Where a fall sends the player back. Set when a level is entered. Not a new run.
+var checkpoint_position := Vector3(0.0, 0.05, 11.0)
+var checkpoint_yaw := 0.0
 var _camera_shake := true
 var _bob_time := 0.0
 var _step_distance := 0.0
+var _slide_path: Path3D
+var _slide_along := 0.0
+var _slide_speed := 0.0
 
 
 func _ready() -> void:
@@ -54,6 +60,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if _slide_path != null:
+		vacuum.enabled = false
+		_ride_slide(delta)
+		return
 	var control := has_control()
 	vacuum.enabled = control
 	if not is_on_floor():
@@ -114,6 +124,49 @@ func teleport(at: Vector3, facing_yaw: float) -> void:
 	velocity = Vector3.ZERO
 	_step_distance = 0.0
 	set_look(facing_yaw, 0.0)
+
+
+func remember_checkpoint(at: Vector3, facing_yaw: float) -> void:
+	checkpoint_position = at
+	checkpoint_yaw = facing_yaw
+
+
+## Puts the player back on their feet. Balls, the vacuum, and unlocked doors stay as they are.
+func respawn() -> void:
+	_slide_path = null
+	teleport(checkpoint_position, checkpoint_yaw)
+
+
+## Ride starts when the player walks into a slide mouth. They can climb back up and do it again.
+func start_slide(path: Path3D) -> void:
+	if _slide_path != null or path == null or path.curve == null:
+		return
+	_slide_path = path
+	_slide_along = 0.0
+	_slide_speed = 2.4
+
+
+func _ride_slide(delta: float) -> void:
+	var curve := _slide_path.curve
+	var length := curve.get_baked_length()
+	_slide_speed = minf(_slide_speed + 8.0 * delta, 13.0)
+	_slide_along += _slide_speed * delta
+	if _slide_along >= length - 0.05:
+		global_position = _slide_path.to_global(curve.sample_baked(length))
+		velocity = Vector3.ZERO
+		_slide_path = null
+		Sfx.play("water_splash", "Environment", -8.0, randf_range(0.92, 1.08))
+		var pool := get_parent().find_child("Pool", true, false)
+		if pool != null and pool.has_method("splash"):
+			pool.splash(global_position)
+		return
+	var local_at := curve.sample_baked(_slide_along)
+	var ahead := curve.sample_baked(minf(_slide_along + 0.45, length))
+	global_position = _slide_path.to_global(local_at)
+	var flat := Vector2(ahead.x - local_at.x, ahead.z - local_at.z)
+	if flat.length() > 0.02:
+		set_look(atan2(-flat.x, -flat.y), 0.15)
+	velocity = Vector3.ZERO
 
 
 # One step every STEP_LENGTH metres on the ground, so sprinting steps faster. Nothing in the air.

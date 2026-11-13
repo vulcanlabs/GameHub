@@ -6,30 +6,34 @@ extends Node
 ## `balls_in_run()` starts at 250,000 and only changes when viewers add or remove balls (a later phase).
 
 signal counts_changed
+signal tool_changed(tool: int)
 signal level_unlocked(level: int)
 signal sweep_started
 signal vacuum_filled
 signal run_reset
 
 const VACUUM_CAPACITY := 50000
+const TOOL_HAND := 0
+const TOOL_VACUUM := 1
 ## A level opens the next door when this many balls or fewer are still on the floor.
 const CLEAR_LEFT := 10
 
-## The seven levels in play order. `balls` is the starting count and adds up to 250,000.
+## Play order. `balls` adds up to 250,000.
 const LEVELS := [
-	{"name": "Playroom", "balls": 20000},
-	{"name": "Poolroom", "balls": 35000},
-	{"name": "Craft Closet", "balls": 35000},
-	{"name": "Wet Room", "balls": 35000},
-	{"name": "Costume Store", "balls": 40000},
-	{"name": "Staff Hall", "balls": 40000},
-	{"name": "Boiler", "balls": 45000},
+	{"name": "Poolrooms", "balls": 4000},
+	{"name": "Pool", "balls": 45000},
+	{"name": "Backrooms", "balls": 45000},
+	{"name": "Waiting Room", "balls": 45000},
+	{"name": "Office", "balls": 45000},
+	{"name": "Ball Pit", "balls": 50000},
 ]
 
 var remaining := PackedInt32Array()
 var unlocked: Array[bool] = []
 var current_level := 0
 var vacuum_stored := 0
+## 0 is the hand (one ball per click). 1 is the vacuum.
+var tool := TOOL_VACUUM
 var deposited := 0
 var run_time := 0.0
 var sweeping := false
@@ -51,6 +55,7 @@ func reset_run() -> void:
 		unlocked[i] = i == 0
 	current_level = 0
 	vacuum_stored = 0
+	set_tool(TOOL_VACUUM)
 	deposited = 0
 	run_time = 0.0
 	sweeping = false
@@ -91,6 +96,14 @@ func vacuum_space() -> int:
 
 func vacuum_full() -> bool:
 	return vacuum_stored >= VACUUM_CAPACITY
+
+
+func set_tool(next: int) -> void:
+	next = clampi(next, TOOL_HAND, TOOL_VACUUM)
+	if tool == next:
+		return
+	tool = next
+	tool_changed.emit(tool)
 
 
 ## The ball manager reports how many balls its level still holds.

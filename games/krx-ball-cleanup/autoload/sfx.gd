@@ -7,7 +7,7 @@ extends Node
 ##
 ## To replace one, save a file as res://assets/audio/<name>.ogg (or .wav, .mp3). It is picked up instead of the
 ## synthesized version and nothing else changes. Names: vacuum_motor, vacuum_air, ball_pop, ball_pour,
-## warn_full, step_tile, room_hum, ui_click, unlock.
+## warn_full, step_tile, room_hum, ui_click, unlock, vent_hum, plastic_creak, distant_metal, ball_bounce_far.
 
 const RATE := 22050
 
@@ -17,7 +17,7 @@ const BUS_SETTING := {
 	"Master": "master", "Music": "music", "Footsteps": "footsteps", "Vacuum": "vacuum",
 	"Balls": "balls", "Environment": "environment", "Alerts": "alerts", "Monster": "monster",
 }
-const NAMES := ["vacuum_motor", "vacuum_air", "ball_pop", "ball_pour", "warn_full", "step_tile", "room_hum", "ui_click", "unlock"]
+const NAMES := ["vacuum_motor", "vacuum_air", "ball_pop", "ball_pour", "warn_full", "step_tile", "room_hum", "ui_click", "unlock", "error", "vent_hum", "plastic_creak", "distant_metal", "ball_bounce_far", "water_splash"]
 
 var _streams := {}
 var _voices: Array[AudioStreamPlayer] = []
@@ -222,6 +222,16 @@ func _make_ui_click() -> AudioStreamWAV:
 	return _wav(out, false)
 
 
+# A short denied buzz for a locked door.
+func _make_error() -> AudioStreamWAV:
+	var out := _buffer(0.28)
+	for i in out.size():
+		var t := float(i) / RATE
+		var buzz := sin(TAU * 140.0 * t) + 0.4 * sin(TAU * 93.0 * t)
+		out[i] = buzz * minf(t / 0.008, 1.0) * exp(-t * 9.0) * 0.45
+	return _wav(out, false)
+
+
 # Four rising notes: a level opened.
 func _make_unlock() -> AudioStreamWAV:
 	var out := _buffer(1.1)
@@ -234,6 +244,77 @@ func _make_unlock() -> AudioStreamWAV:
 			var t := float(k) / RATE
 			var tone: float = notes[n]
 			out[start + k] += (sin(TAU * tone * t) + 0.3 * sin(TAU * tone * 2.0 * t)) * minf(t / 0.004, 1.0) * exp(-t * 7.0) * 0.3
+	return _wav(out, false)
+
+
+# Quiet HVAC air behind the fluorescent fittings.
+func _make_vent_hum() -> AudioStreamWAV:
+	var length := 2.4
+	var fade := 0.2
+	var out := _buffer(length + fade)
+	var rng := _rng(11)
+	var low := 0.0
+	var mid := 0.0
+	for i in out.size():
+		var t := float(i) / RATE
+		var noise := (rng.randf() - 0.5) * 2.0
+		low += (noise - low) * 0.02
+		mid += (noise - mid) * 0.07
+		var tone := 0.08 * sin(TAU * 48.0 * t) + 0.05 * sin(TAU * 96.0 * t + 0.6)
+		out[i] = (low * 1.1 + (mid - low) * 0.35 + tone) * 0.42
+	return _wav(_loopable(out, fade), true)
+
+
+# A short plastic playground creak.
+func _make_plastic_creak() -> AudioStreamWAV:
+	var out := _buffer(0.55)
+	var rng := _rng(12)
+	var phase := 0.0
+	for i in out.size():
+		var t := float(i) / RATE
+		phase += lerpf(220.0, 140.0, t / 0.55) / RATE
+		var body := sin(TAU * phase) * exp(-t * 4.2)
+		var grain := (rng.randf() - 0.5) * exp(-t * 8.0)
+		out[i] = (body * 0.55 + grain * 0.18) * minf(t / 0.02, 1.0)
+	return _wav(out, false)
+
+
+# Far-off duct or pole knock.
+func _make_distant_metal() -> AudioStreamWAV:
+	var out := _buffer(0.7)
+	var rng := _rng(13)
+	for i in out.size():
+		var t := float(i) / RATE
+		var clang := sin(TAU * 190.0 * t) * exp(-t * 6.5)
+		clang += 0.35 * sin(TAU * 310.0 * t) * exp(-t * 9.0)
+		var air := (rng.randf() - 0.5) * exp(-t * 12.0) * 0.2
+		out[i] = (clang + air) * 0.4
+	return _wav(out, false)
+
+
+# One distant ball hitting a hard floor.
+func _make_ball_bounce_far() -> AudioStreamWAV:
+	var out := _buffer(0.22)
+	var rng := _rng(14)
+	for i in out.size():
+		var t := float(i) / RATE
+		var body := sin(TAU * 420.0 * t) * exp(-t * 22.0)
+		var tick := sin(TAU * 1600.0 * t) * exp(-t * 70.0)
+		var noise := (rng.randf() - 0.5) * exp(-t * 90.0)
+		out[i] = (body * 0.5 + tick * 0.18 + noise * 0.12) * 0.35
+	return _wav(out, false)
+
+
+func _make_water_splash() -> AudioStreamWAV:
+	var out := _buffer(0.45)
+	var rng := _rng(21)
+	var low := 0.0
+	for i in out.size():
+		var t := float(i) / RATE
+		var noise := (rng.randf() - 0.5) * 2.0
+		low += (noise - low) * 0.18
+		var body := sin(TAU * 90.0 * t) * exp(-t * 8.0)
+		out[i] = (body * 0.45 + low * exp(-t * 6.0)) * 0.7
 	return _wav(out, false)
 
 

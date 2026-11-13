@@ -26,8 +26,9 @@ var _balls_left: Label
 var _level_name: Label
 var _timer: Label
 var _tank_text: Label
-var _tank_bar: ProgressBar
-var _tank_fill: StyleBoxFlat
+var _held_count: Label
+var _tool_vacuum: PanelContainer
+var _tool_hand: PanelContainer
 var _prompt: Control
 var _full: Control
 var _toast: Label
@@ -47,7 +48,7 @@ func _ready() -> void:
 	_build_top_centre(root)
 	_build_top_right(root)
 	_build_tank(root)
-	_build_controls(root)
+	_build_tools(root)
 	_build_centre(root)
 	GameState.counts_changed.connect(func() -> void: _dirty = true)
 	GameState.level_unlocked.connect(_on_level_unlocked)
@@ -56,9 +57,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_clock += delta
-	if _dirty:
-		_dirty = false
-		_refresh_counts()
+	_refresh_counts()
 	var second := int(GameState.run_time)
 	if second != _shown_second:
 		_shown_second = second
@@ -138,7 +137,7 @@ static func clock_text(seconds: int) -> String:
 
 func _any_pit_ready() -> bool:
 	for pit in pits:
-		if pit != null and pit.can_unload():
+		if pit != null and pit.can_unload() and pit.looking_at():
 			return true
 	return false
 
@@ -149,18 +148,15 @@ func _refresh_counts() -> void:
 	_level_name.text = "LEVEL %d / %d   %s" % [level + 1, GameState.LEVELS.size(), GameState.level_name(level).to_upper()]
 
 	var stored := GameState.vacuum_stored
-	var fill := float(stored) / GameState.VACUUM_CAPACITY
 	_tank_text.text = "%s / %s" % [number(stored), number(GameState.VACUUM_CAPACITY)]
-	_tank_bar.value = fill * 100.0
-	_tank_fill.bg_color = BAD if fill >= 1.0 else (ACCENT if fill >= 0.8 else GOOD)
+	_held_count.text = str(stored)
+	_mark_tool(_tool_vacuum, GameState.tool == GameState.TOOL_VACUUM)
+	_mark_tool(_tool_hand, GameState.tool == GameState.TOOL_HAND)
 
 
 func _on_level_unlocked(level: int) -> void:
 	Sfx.play("unlock", "Alerts", -3.0)
-	if level == 1:
-		announce("LEVEL 2 UNLOCKED   POOLROOM", GOOD, 5.0)
-	else:
-		announce("LEVEL %d UNLOCKED   %s   (NOT BUILT YET)" % [level + 1, GameState.level_name(level).to_upper()], GOOD, 6.0)
+	announce("LEVEL %d COMPLETED" % level, GOOD, 4.5)
 
 
 func _on_sweep() -> void:
@@ -184,32 +180,58 @@ func _build_top_right(root: Control) -> void:
 
 
 func _build_tank(root: Control) -> void:
-	var box := _stack(root, Control.PRESET_BOTTOM_LEFT, Vector2(26.0, -26.0))
-	_label(box, "VACUUM", _semi, 18, DIM, HORIZONTAL_ALIGNMENT_LEFT)
-	_tank_text = _label(box, "0 / 50,000", _bold, 28, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
-	_tank_bar = _bar(box, GOOD, 14.0)
-	_tank_bar.custom_minimum_size = Vector2(220.0, 14.0)
-	_tank_fill = _tank_bar.get_theme_stylebox("fill") as StyleBoxFlat
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_theme_constant_override("separation", 16)
+	root.add_child(row)
+	_pin(row, Control.PRESET_BOTTOM_LEFT, Vector2(22.0, -96.0))
+	var jar := _jar()
+	row.add_child(jar)
+	_held_count = _label(row, "0", _bold, 36, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	_held_count.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_tank_text = _label(row, "0 / 50,000", _bold, 8, Color(0, 0, 0, 0))
+	_tank_text.visible = false
 
 
-func _build_controls(root: Control) -> void:
-	var box := _panel(root, Control.PRESET_BOTTOM_RIGHT, Vector2(-26.0, -26.0))
-	for line: String in [
-		"WASD  MOVE     SHIFT  SPRINT     SPACE  JUMP",
-		"HOLD LEFT MOUSE  VACUUM",
-		"HOLD E AT A BALL PIT  EMPTY VACUUM",
-		"ESC  PAUSE AND SETTINGS",
-	]:
-		_label(box, line, _semi, 25, DIM, HORIZONTAL_ALIGNMENT_RIGHT)
+func _jar() -> Control:
+	var holder := Control.new()
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.custom_minimum_size = Vector2(72.0, 118.0)
+	holder.clip_contents = true
+	var picture := TextureRect.new()
+	picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	picture.texture = _jar_picture()
+	picture.modulate = Color(1, 1, 1, 0.45)
+	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	picture.set_anchors_preset(Control.PRESET_FULL_RECT)
+	holder.add_child(picture)
+	var capacity := _label(holder, "50000", _bold, 20, Color.WHITE)
+	capacity.add_theme_color_override("font_outline_color", Color.BLACK)
+	capacity.add_theme_constant_override("outline_size", 8)
+	capacity.set_anchors_preset(Control.PRESET_FULL_RECT)
+	capacity.offset_top = 18.0
+	capacity.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	capacity.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	return holder
+
+
+func _build_tools(root: Control) -> void:
+	var column := VBoxContainer.new()
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_theme_constant_override("separation", 10)
+	root.add_child(column)
+	_pin(column, Control.PRESET_BOTTOM_RIGHT, Vector2(-36.0, -150.0))
+	_tool_vacuum = _tool_slot(column, "2", _vacuum_picture())
+	_tool_hand = _tool_slot(column, "1", _fist_picture())
 
 
 func _build_centre(root: Control) -> void:
 	_dot = CentreDot.new()
 	root.add_child(_dot)
 
-	var prompt_box := _panel(root, Control.PRESET_CENTER, Vector2(0.0, 150.0))
-	_label(prompt_box, "HOLD E TO EMPTY VACUUM", _bold, 50, Color.WHITE)
-	_prompt = prompt_box.get_parent()
+	_prompt = _label(root, "PRESS E TO EMPTY VACUUM", _bold, 22, Color.WHITE)
+	_pin(_prompt, Control.PRESET_CENTER, Vector2.ZERO)
 	_prompt.visible = false
 
 	var full_box := VBoxContainer.new()
@@ -287,6 +309,94 @@ func _grow(preset: Control.LayoutPreset, horizontal: bool) -> Control.GrowDirect
 		Control.PRESET_CENTER_LEFT, Control.PRESET_CENTER:
 			return Control.GROW_DIRECTION_BOTH
 	return Control.GROW_DIRECTION_END
+
+
+func _mark_tool(slot: PanelContainer, selected: bool) -> void:
+	var style := slot.get_theme_stylebox("panel") as StyleBoxFlat
+	if style == null:
+		return
+	style.bg_color = Color(0.96, 0.96, 0.97, 0.96) if selected else Color(0.22, 0.22, 0.25, 0.78)
+	slot.custom_minimum_size = Vector2(78.0, 78.0) if selected else Vector2(58.0, 58.0)
+	slot.rotation = 0.0
+	for child in slot.get_children():
+		if child is TextureRect:
+			child.modulate = Color(0.12, 0.12, 0.14) if selected else Color.WHITE
+
+
+func _tool_slot(parent: Control, key_text: String, icon: Texture2D) -> PanelContainer:
+	var slot := PanelContainer.new()
+	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slot.custom_minimum_size = Vector2(58.0, 58.0)
+	slot.clip_contents = true
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.22, 0.22, 0.25, 0.78)
+	style.set_corner_radius_all(14)
+	slot.add_theme_stylebox_override("panel", style)
+	parent.add_child(slot)
+	var picture := TextureRect.new()
+	picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	picture.texture = icon
+	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	picture.custom_minimum_size = Vector2(40.0, 40.0)
+	picture.set_anchors_preset(Control.PRESET_FULL_RECT)
+	picture.offset_left = 8.0
+	picture.offset_top = 6.0
+	picture.offset_right = -8.0
+	picture.offset_bottom = -8.0
+	slot.add_child(picture)
+	var key := _label(slot, key_text, _bold, 14, Color(0.9, 0.9, 0.92))
+	key.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	key.offset_left = -18.0
+	key.offset_top = -18.0
+	return slot
+
+
+func _jar_picture() -> Texture2D:
+	var image := Image.new()
+	image.load("res://assets/ui/jar.png")
+	return ImageTexture.create_from_image(image)
+
+
+func _vacuum_picture() -> ImageTexture:
+	var image := Image.create(64, 64, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0, 0, 0, 0))
+	var ink := Color.WHITE
+	_disc(image, Vector2(24, 40), Vector2(16, 14), ink)
+	_disc(image, Vector2(24, 40), Vector2(8, 8), Color(0, 0, 0, 0))
+	_box_px(image, Rect2i(30, 22, 22, 6), ink)
+	_box_px(image, Rect2i(48, 16, 8, 8), ink)
+	_box_px(image, Rect2i(14, 18, 5, 16), ink)
+	_disc(image, Vector2(16, 16), Vector2(6, 5), ink)
+	return ImageTexture.create_from_image(image)
+
+
+func _fist_picture() -> ImageTexture:
+	var image := Image.create(64, 64, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0, 0, 0, 0))
+	var ink := Color.WHITE
+	_disc(image, Vector2(34, 36), Vector2(16, 14), ink)
+	_disc(image, Vector2(22, 24), Vector2(6, 8), ink)
+	_disc(image, Vector2(30, 20), Vector2(6, 8), ink)
+	_disc(image, Vector2(38, 20), Vector2(6, 8), ink)
+	_disc(image, Vector2(46, 24), Vector2(6, 7), ink)
+	_disc(image, Vector2(18, 34), Vector2(7, 6), ink)
+	return ImageTexture.create_from_image(image)
+
+
+func _disc(image: Image, centre: Vector2, radius: Vector2, color: Color) -> void:
+	for y in image.get_height():
+		for x in image.get_width():
+			var point := Vector2(float(x) - centre.x, float(y) - centre.y)
+			if (point.x * point.x) / (radius.x * radius.x) + (point.y * point.y) / (radius.y * radius.y) <= 1.0:
+				image.set_pixel(x, y, color)
+
+
+func _box_px(image: Image, rect: Rect2i, color: Color) -> void:
+	for y in range(rect.position.y, rect.position.y + rect.size.y):
+		for x in range(rect.position.x, rect.position.x + rect.size.x):
+			if x >= 0 and y >= 0 and x < image.get_width() and y < image.get_height():
+				image.set_pixel(x, y, color)
 
 
 func _label(parent: Control, text: String, font: Font, size: int, color: Color,
