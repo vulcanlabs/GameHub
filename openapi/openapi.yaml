@@ -631,7 +631,8 @@ components:
     GameSettings:
       description: >
         Shape depends on the game slug. Don’t Touch the Lava uses LavaSettings.
-        Don’t Touch the Grass uses GrassSettings. Every other slug uses WaterSettings.
+        Don’t Touch the Grass and One More Lawn use GrassSettings.
+        Every other slug uses WaterSettings.
       oneOf:
         - $ref: "#/components/schemas/WaterSettings"
         - $ref: "#/components/schemas/LavaSettings"

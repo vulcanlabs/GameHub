@@ -51,6 +51,16 @@ export const GAMES: GameMeta[] = [
     version: "v0.1.0",
     runtime: "desktop",
   },
+  {
+    slug: "one-more-lawn",
+    title: "One More Lawn",
+    emoji: "🌿",
+    genre: "Stream",
+    blurb:
+      "First-person lawn and a grass-left counter. Add, remove, and save the run. The meadow grows and gets cut with the number.",
+    version: "v0.1.0",
+    runtime: "web",
+  },
 ];
 
 export function isDesktopGame(slug: string): boolean {

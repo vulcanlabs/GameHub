@@ -11,6 +11,7 @@ import {
   isGrassSlug,
   isLavaSettings,
   isLavaSlug,
+  isLawnSlug,
   isWaterSettings,
   type AnySettings,
   type GameSettings,
@@ -36,6 +37,7 @@ export function GameDashboard({
   initialDevices = [],
 }: Props) {
   const desktop = game.runtime === "desktop";
+  const lawn = isLawnSlug(game.slug);
   const [tab, setTab] = useState<"ov" | "st">("ov");
   const [bindings, setBindings] = useState(initialBindings);
   const [settings, setSettings] = useState(initialSettings);
@@ -354,34 +356,27 @@ export function GameDashboard({
               Gifts from your LIVE trigger the actions you set here.
             </p>
             <ol className="mt-4 space-y-4 text-base">
-              <li className="flex gap-3">
-                <b className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[var(--sand)]">
-                  1
-                </b>
-                <span>
-                  {desktop
-                    ? `Create a link code and enter it in the ${game.title} app on this PC.`
-                    : "Press Play. The game opens in its own window. Click inside it to start."}
-                </span>
-              </li>
-              <li className="flex gap-3">
-                <b className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[var(--sand)]">
-                  2
-                </b>
-                <span>
-                  Run the TikFinity bridge with your hook URL. Keep this hub
-                  open.
-                </span>
-              </li>
-              <li className="flex gap-3">
-                <b className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[var(--sand)]">
-                  3
-                </b>
-                <span>
-                  WASD move, Shift sprint, Space jump/climb. F1–F12 also fire actions
-                  in the game window.
-                </span>
-              </li>
+              {(lawn
+                ? [
+                    "Press Play. One More Lawn opens in its own window.",
+                    "Add and remove grass with the buttons. The meadow is cut back as the count falls, and grows as it rises.",
+                    "Save stores the count in this browser. Reset and instant reset change the live number and leave that save alone until you press Save again.",
+                  ]
+                : [
+                    desktop
+                      ? `Create a link code and enter it in the ${game.title} app on this PC.`
+                      : "Press Play. The game opens in its own window. Click inside it to start.",
+                    "Run the TikFinity bridge with your hook URL. Keep this hub open.",
+                    "WASD move, Shift sprint, Space jump/climb. F1–F12 also fire actions in the game window.",
+                  ]
+              ).map((step, index) => (
+                <li key={step} className="flex gap-3">
+                  <b className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[var(--sand)]">
+                    {index + 1}
+                  </b>
+                  <span>{step}</span>
+                </li>
+              ))}
             </ol>
           </section>
 
@@ -440,6 +435,11 @@ export function GameDashboard({
       ) : isGrassSlug(game.slug) ? (
         <p className="rounded-[32px] bg-[var(--card)] p-5 text-base text-[var(--card-ink)]">
           Open the Godot app. Meadow only. No knobs yet.
+        </p>
+      ) : isLawnSlug(game.slug) ? (
+        <p className="rounded-[32px] bg-[var(--card)] p-5 text-base text-[var(--card-ink)]">
+          The grass count lives in the play window and is saved in this browser.
+          Reset does not overwrite that save.
         </p>
       ) : isWaterSettings(settings) ? (
         <div className="space-y-4 rounded-[32px] bg-[var(--card)] p-5 text-[var(--card-ink)]">
