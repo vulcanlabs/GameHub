@@ -8,6 +8,7 @@ import {
   isAction,
   isGrassSlug,
   isLavaSlug,
+  isLawnSlug,
   normalizeBindingNames,
   type AnySettings,
   type GameSettings,
@@ -47,7 +48,7 @@ export function asBindings(value: unknown): Record<string, string> {
 
 export function asSettings(slug: string, value: unknown): AnySettings {
   if (isLavaSlug(slug)) return asLavaSettings(value);
-  if (isGrassSlug(slug)) return asGrassSettings(value);
+  if (isGrassSlug(slug) || isLawnSlug(slug)) return asGrassSettings(value);
   return asWaterSettings(value);
 }
 
@@ -129,7 +130,7 @@ export function validateSettingsInput(
     }
     return asLavaSettings(body);
   }
-  if (isGrassSlug(slug)) {
+  if (isGrassSlug(slug) || isLawnSlug(slug)) {
     if (raw.version == null) return null;
     return asGrassSettings(body);
   }

@@ -4,6 +4,8 @@ import { getGame } from "@/games/registry";
 import { asSettings, getOrCreateGameConfig } from "@/lib/game-config";
 import { isWaterSettings } from "@/lib/gifts";
 import { GameCanvas } from "@/games/dont-touch-the-water";
+import { LawnCanvas } from "@/games/one-more-lawn";
+import { LAWN_SLUG } from "@/lib/gifts";
 import { canAccessGames } from "@/lib/roles";
 
 export default async function PlayPage({
@@ -30,6 +32,14 @@ export default async function PlayPage({
 
   const config = await getOrCreateGameConfig(session.user.id, slug);
   if (!config) notFound();
+
+  if (slug === LAWN_SLUG) {
+    return (
+      <div className="h-screen w-screen overflow-hidden">
+        <LawnCanvas slug={slug} />
+      </div>
+    );
+  }
 
   if (slug !== "dont-touch-the-water") {
     return (

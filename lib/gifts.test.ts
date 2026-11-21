@@ -1,9 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
   GIFT_CATALOG,
+  defaultSettingsFor,
   giftEmoji,
+  isLawnSlug,
   normalizeBindingNames,
 } from "./gifts";
+
+describe("one more lawn settings", () => {
+  it("stores the version placeholder instead of water settings", () => {
+    expect(isLawnSlug("one-more-lawn")).toBe(true);
+    expect(defaultSettingsFor("one-more-lawn")).toEqual({ version: 1 });
+  });
+});
 
 describe("gift catalog", () => {
   it("matches the US TikTok names and coin prices", () => {

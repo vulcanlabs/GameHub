@@ -108,6 +108,7 @@ export const DEFAULT_BINDINGS: Record<string, string> = {
 
 export const LAVA_SLUG = "dont-touch-the-lava";
 export const GRASS_SLUG = "dont-touch-the-grass";
+export const LAWN_SLUG = "one-more-lawn";
 
 export type GameSettings = {
   monster: "stalker" | "crawler" | "beast" | "shadow";
@@ -155,9 +156,13 @@ export function isGrassSlug(slug: string): boolean {
   return slug === GRASS_SLUG;
 }
 
+export function isLawnSlug(slug: string): boolean {
+  return slug === LAWN_SLUG;
+}
+
 export function defaultSettingsFor(slug: string): AnySettings {
   if (isLavaSlug(slug)) return { ...DEFAULT_LAVA_SETTINGS };
-  if (isGrassSlug(slug)) return { ...DEFAULT_GRASS_SETTINGS };
+  if (isGrassSlug(slug) || isLawnSlug(slug)) return { ...DEFAULT_GRASS_SETTINGS };
   return { ...DEFAULT_SETTINGS };
 }
 
